@@ -34,9 +34,21 @@ Sistema completo para cálculo de materiais de construção, com histórico de o
 Interface moderna com abas organizadas por tipo de cálculo:
 
 - Navegação por abas
-- Tema claro
+- Tema escuro
 - Feedback visual
 - Layout responsivo
+
+### 🏠 Tela Inicial
+![Tela Inicial](assets/images/inicio.png)
+
+### 🧮 Tela de Cálculo
+![Cálculo](assets/images/calculo.png)
+
+### 📊 Resultado
+![Resultado](assets/images/resultado.png)
+
+### 📂 Histórico
+![Histórico](assets/images/historico.png)
 
 ---
 
