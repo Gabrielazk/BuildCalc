@@ -1,0 +1,58 @@
+[
+    {
+        "nome": "Casa da Ana",
+        "data": "05/05/2026 12:06",
+        "resumo": "[b]📋 RESUMO DA OBRA - BuildCalc[/b]\n\n[b]🕳️ BROCAS[/b]\n------------------------------\n[b]Volume total das brocas:[/b] 0,42 m³\n\n[b]Materiais necessários:[/b]\n- Cimento: 4 saco(s) de 50kg\n- Areia: 0,18 m³\n- Pedra: 0,18 m³\n\n[b]🧱 BALDRAME[/b]\n------------------------------\n[b]Volume total do baldrame:[/b] 0,60 m³\n\n[b]Materiais Necessários:[/b]\n- Cimento: 4 saco(s) de 50kg\n- Areia: 0,30 m³\n- Pedra: 0,22 m³\n\n[b]🧱 PAREDES[/b]\n------------------------------\n[b]Área total da parede:[/b] 20,00 m²\n[b]Espaço perdido (portas e janelas):[/b] 2,00 m²\n[b]Área líquida da parede:[/b] 18,00 m²\n\n[b]Margem para tijolos:[/b] 10%\n[b]Tijolos necessários:[/b] 549\n\n[b]Materiais necessários:[/b]\n- Cimento: 1 saco(s) de 50kg\n- Cal: 1 saco(s) de 20kg\n- Areia: 0,14 m³\n\n[b]🪵 REBOCO[/b]\n------------------------------\n[b]Área total das paredes:[/b] 30,00 m²\n[b]Espaço perdido:[/b] 4,00 m²\n[b]Área líquida:[/b] 26,00 m²\n\n[b]Volume de reboco:[/b] 0,52 m³\n\n[b]Materiais Necessários:[/b]\n- Cimento: 3 saco(s) de 50kg\n- Cal: 2 saco(s) de 20kg\n- Areia: 0,42 m³\n\n[b]🧱 CONTRAPISO[/b]\n------------------------------\n[b]Área do contrapiso:[/b] 20,00 m²\n[b]Volume total do contrapiso:[/b] 1,00 m³\n\n[b]Materiais Necessários:[/b]\n- Cimento: 8 saco(s) de 50kg\n- Areia: 0,43 m³\n- Pedra: 0,43 m³\n\n[b]🧩 REVESTIMENTO[/b]\n------------------------------\n[b]Piso:[/b]\n[b]Área total:[/b] 12,00 m²\n[b]Área com margem (10%):[/b] 13,20 m²\n\n[b]Peças necessárias:[/b] 37\n\n[b]Materiais Necessários:[/b]\n- Rejunte necessário: 2,87 kg\n- Argamassa: 66,00 kg\n- Sacos de 20 kg: 4\n\n\n[b]CUSTOS POR ETAPA[/b]\n------------------------------------------------\n\n[b]🕳️ Brocas:[/b].............................R$ 197,00\n[b]🧱 Baldrame:[/b]...........................R$ 216,60\n[b]🧱 Paredes:[/b]............................R$ 731,60\n[b]🪵 Reboco:[/b].............................R$ 200,40\n[b]🧱 Contrapiso:[/b].........................R$ 411,50\n[b]🧩 Revestimentos:[/b]......................R$ 174,44\n\n------------------------------------------------\n[b]TOTAL GERAL DA OBRA[/b]\n[b]R$ 1.931,54[/b]",
+        "campos": {
+            "brocas": {
+                "qtd_brocas": "4",
+                "diametro_broca": "0,30",
+                "profundidade_broca": "1,50",
+                "proporcao": "1:3:3"
+            },
+            "baldrame": {
+                "comprimento_baldrame": "10",
+                "largura_baldrame": "0,20",
+                "altura_baldrame": "0,30",
+                "proporcao": "1:4:3"
+            },
+            "paredes": {
+                "area_parede": "20",
+                "espaco_perdido_parede": "2",
+                "tijolo": "Tijolo Baiano",
+                "margem": "10%",
+                "massa": "1:0.5:6"
+            },
+            "reboco": {
+                "area_reboco": "30",
+                "espaco_perdido_reboco": "4",
+                "espessura_reboco": "0,02",
+                "massa": "1:0.5:6"
+            },
+            "contrapiso": {
+                "area_contrapiso": "20",
+                "espessura_contrapiso": "0,05",
+                "proporcao": "1:3:3"
+            },
+            "revestimento": {
+                "tipo": "piso",
+                "area_piso": "12",
+                "tamanho_piso": "60x60",
+                "junta_piso": "2",
+                "area_azulejo": "",
+                "tamanho_azulejo": "",
+                "junta_azulejo": ""
+            },
+            "orcamento": {
+                "tipo_tijolo": "",
+                "preco_tijolo": "1,20",
+                "preco_cimento": "38,00",
+                "preco_cal": "18",
+                "preco_areia": "120",
+                "preco_pedra": "130",
+                "preco_argamassa": "35",
+                "preco_rejunte": "12"
+            }
+        }
+    }
+]
