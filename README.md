@@ -42,10 +42,10 @@ Interface moderna com abas organizadas por tipo de cálculo:
 ![Tela Inicial](assets/images/inicio.png)
 
 ### 🧮 Tela de Cálculo
-![Cálculo](assets/images/calculo.png)
+![Cálculo](assets/images/paredes.png)
 
 ### 📊 Resultado
-![Resultado](assets/images/resultado.png)
+![Resultado](assets/images/resumo.png)
 
 ### 📂 Histórico
 ![Histórico](assets/images/historico.png)
