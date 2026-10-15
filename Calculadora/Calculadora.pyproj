@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>ab6cc2d0-3b78-498f-9eaf-ad9fe288c5a3</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Calculadora.py</StartupFile>
+    <StartupFile>main.py</StartupFile>
     <SearchPath>.</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -23,6 +23,33 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Calculadora.py" />
+    <Compile Include="main.py" />
+    <Compile Include="src\calculators\baldrame.py" />
+    <Compile Include="src\calculators\brocas.py" />
+    <Compile Include="src\calculators\contrapiso.py" />
+    <Compile Include="src\calculators\paredes.py" />
+    <Compile Include="src\calculators\reboco.py" />
+    <Compile Include="src\calculators\revestimento.py" />
+    <Compile Include="src\calculators\__init__.py" />
+    <Compile Include="src\models\database.py" />
+    <Compile Include="src\models\material.py" />
+    <Compile Include="src\models\__init__.py" />
+    <Compile Include="src\services\pdf_generator.py" />
+    <Compile Include="src\services\__init__.py" />
+    <Compile Include="src\views\main_screen.py" />
+    <Compile Include="src\views\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="assets\" />
+    <Folder Include="src\" />
+    <Folder Include="src\calculators\" />
+    <Folder Include="src\models\" />
+    <Folder Include="src\views\" />
+    <Folder Include="src\services\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="README.md" />
+    <Content Include="requirements.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
