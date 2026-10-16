@@ -15,6 +15,7 @@ from kivymd.uix.dialog import (
 )
 
 from src.calculators.brocas import calcular_brocas
+from src.calculators.baldrame import calcular_baldrame
 from src.models.material import TabelaPrecos
 from src.models.database import (
     salvar_orcamento,
@@ -51,9 +52,13 @@ TEXTOS = {
         "btn_tema": "Escuro",
         "btn_tema_light": "Claro",
         "btn_voltar": "<- Voltar",
+        "titulo_calculadora": "Calculadora de Materiais",
+        "aba_brocas": "Brocas",
+        "aba_baldrame": "Baldrame",
+        "secao_dimensoes": "Dimensões (Obrigatório)",
         "titulo_brocas": "Brocas / Estacas",
         "secao_brocas": "1. Brocas / Estacas (Obrigatório)",
-        "secao_opcional": "2. Opções Avançadas (Opcional)",
+        "secao_opcional": "Opções Avançadas (Opcional)",
         "hint_qtd": "Quantidade de brocas (ex: 10)",
         "hint_prof": "Profundidade em metros (ex: 3,0)",
         "hint_diam": "Diâmetro em cm (ex: 20)",
@@ -117,9 +122,9 @@ TEXTOS = {
         "hint_mao_obra": "Mão de Obra (m²)",
         "titulo_baldrame": "Cálculo de Baldrame",
         "secao_baldrame": "Dimensões da Viga Baldrame",
-        "hint_comprimento": "Comprimento total (m)",
-        "hint_largura": "Largura da viga (cm)",
-        "hint_altura": "Altura da viga (cm)"
+        "hint_comprimento": "Comprimento total em metros (ex: 12,5)",
+        "hint_largura": "Largura da viga em cm (ex: 20)",
+        "hint_altura": "Altura da viga em cm (ex: 30)"
     },
     "en": {
         "titulo_app": "BuildCalc Pro",
@@ -133,9 +138,13 @@ TEXTOS = {
         "btn_tema": "Dark",
         "btn_tema_light": "Light",
         "btn_voltar": "<- Back",
+        "titulo_calculadora": "Materials Calculator",
+        "aba_brocas": "Drilled Shafts",
+        "aba_baldrame": "Grade Beam",
+        "secao_dimensoes": "Dimensions (Required)",
         "titulo_brocas": "Drilled Shafts / Piles",
         "secao_brocas": "1. Drilled Shafts / Piles (Required)",
-        "secao_opcional": "2. Advanced Options (Optional)",
+        "secao_opcional": "Advanced Options (Optional)",
         "hint_qtd": "Quantity of shafts (ex: 10)",
         "hint_prof": "Depth in meters (ex: 3.0)",
         "hint_diam": "Diameter in cm (ex: 20)",
@@ -199,9 +208,9 @@ TEXTOS = {
         "hint_mao_obra": "Labor Cost (m²)",
         "titulo_baldrame": "Grade Beam Calculation",
         "secao_baldrame": "Grade Beam Dimensions",
-        "hint_comprimento": "Total length (m)",
-        "hint_largura": "Beam width (cm)",
-        "hint_altura": "Beam height (cm)"
+        "hint_comprimento": "Total length in meters (ex: 12.5)",
+        "hint_largura": "Beam width in cm (ex: 20)",
+        "hint_altura": "Beam height in cm (ex: 30)"
     }
 }
 
@@ -559,6 +568,8 @@ class HomeScreen(MDScreen):
         calc_screen = self.manager.get_screen("calculator")
         calc_screen.ultimo_resultado = None
         calc_screen.modo_somente_leitura = False
+        calc_screen.origem = "home"
+        calc_screen.aba_atual = "brocas"
         calc_screen.atualizar_interface()
         for child in calc_screen.layout_principal.children:
             if isinstance(child, MDScrollView):
@@ -576,6 +587,8 @@ class CalculatorScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "calculator"
+        self.aba_atual = "brocas"
+        self.origem = "home"
         self.md_bg_color = self.theme_cls.backgroundColor
         self.ultimo_resultado = None
         self.modo_somente_leitura = False
@@ -606,13 +619,15 @@ class CalculatorScreen(MDScreen):
         box_tabs = MDBoxLayout(size_hint_y=None, height="48dp", spacing="8dp")
         
         self.btn_tab_brocas = MDButton(
-            MDButtonText(text=txt("secao_brocas")), 
+            MDButtonText(text=txt("aba_brocas")), 
             style="outlined", 
+            disabled=self.modo_somente_leitura,
             on_release=lambda x: self.trocar_aba("brocas")
         )
         self.btn_tab_baldrame = MDButton(
-            MDButtonText(text=txt("secao_baldrame")), 
+            MDButtonText(text=txt("aba_baldrame")), 
             style="outlined", 
+            disabled=self.modo_somente_leitura,
             on_release=lambda x: self.trocar_aba("baldrame")
         )
         
@@ -624,10 +639,15 @@ class CalculatorScreen(MDScreen):
         self.container_conteudo = MDBoxLayout(orientation="vertical")
         self.layout_principal.add_widget(self.container_conteudo)
 
-        # Inicia mostrando a aba de brocas por padrão
-        self.trocar_aba("brocas")
+        # Reabre a aba que estava ativa (brocas por padrão)
+        self.trocar_aba(self.aba_atual)
+
+    def atualizar_interface(self):
+        self.montar_tela()
 
     def trocar_aba(self, aba_nome):
+        self.aba_atual = aba_nome
+        self.ultimo_resultado = None
         self.container_conteudo.clear_widgets()
 
         if aba_nome == "brocas":
@@ -652,6 +672,8 @@ class CalculatorScreen(MDScreen):
         self.in_barras = MDTextField(MDTextFieldHintText(text=txt("hint_barras")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
         self.in_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
 
+        self.lbl_obrigatorio = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        box_form.add_widget(self.lbl_obrigatorio)
         box_form.add_widget(self.in_qtd)
         box_form.add_widget(self.in_prof)
         box_form.add_widget(self.in_diam)
@@ -693,12 +715,16 @@ class CalculatorScreen(MDScreen):
         self.in_bal_alt = MDTextField(MDTextFieldHintText(text=txt("hint_altura")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
 
         self.lbl_opcional_bal = MDLabel(text=txt("secao_opcional"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_bal_perda = MDTextField(MDTextFieldHintText(text=txt("hint_perda")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
         self.in_bal_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
 
+        self.lbl_obrigatorio_bal = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        box_form.add_widget(self.lbl_obrigatorio_bal)
         box_form.add_widget(self.in_bal_comp)
         box_form.add_widget(self.in_bal_larg)
         box_form.add_widget(self.in_bal_alt)
         box_form.add_widget(self.lbl_opcional_bal)
+        box_form.add_widget(self.in_bal_perda)
         box_form.add_widget(self.in_bal_mo)
 
         if not self.modo_somente_leitura:
@@ -776,6 +802,8 @@ class CalculatorScreen(MDScreen):
                 
                 self.ultimo_resultado = {
                     "etapa": txt("secao_brocas"),
+                    "tipo": "brocas",
+                    "inputs": {"qtd": qtd, "prof": prof, "diam": diam, "perda": perda, "barras": num_barras, "mo": preco_mo},
                     "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
                     "aco_kg": res['quilos_aco'], "barras_12m": res['barras_12m'],
                     "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
@@ -784,7 +812,8 @@ class CalculatorScreen(MDScreen):
         except ValueError:
             self.lbl_resultado.text = txt("msg_erro_num")
 
-    def executar_calculo_baldrame(self, instance):
+    def executar_calculo_baldrame(self, instance=None):
+        self.ultimo_resultado = None
         try:
             t_comp = self.in_bal_comp.text.strip()
             t_larg = self.in_bal_larg.text.strip()
@@ -798,220 +827,87 @@ class CalculatorScreen(MDScreen):
             larg = float(t_larg.replace(',', '.'))
             alt = float(t_alt.replace(',', '.'))
 
+            t_perda = self.in_bal_perda.text.strip()
+            perda = float(t_perda.replace(',', '.')) if t_perda else 10.0
+
             t_mo = self.in_bal_mo.text.strip()
             preco_mo = float(t_mo.replace(',', '.')) if t_mo else 0.0
 
-            res = calcular_baldrame(comprimento_m=comp, largura_cm=larg, altura_cm=alt)
+            res = calcular_baldrame(
+                comprimento_m=comp, largura_cm=larg, altura_cm=alt,
+                perda_percentual=perda
+            )
 
             if "erro" in res:
                 self.lbl_res_baldrame.text = f"Erro: {res['erro']}"
-            else:
-                custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
-                custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
-                custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
-                custo_mo = comp * preco_mo
-                custo_mat = custo_cimento + custo_areia + custo_pedra
-                custo_total = custo_mat + custo_mo
+                return
 
-                texto_res = (
-                    f"{txt('label_volume')}: {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
-                    f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
-                    f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
-                    f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
-                )
-                if custo_mo > 0:
-                    texto_res += f"• {txt('label_mo')}: {fmt_num(comp, 1)}m ({fmt_moeda(custo_mo)})\n"
+            custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
+            custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
+            custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
+            custo_mo = comp * preco_mo
+            custo_mat = custo_cimento + custo_areia + custo_pedra
+            custo_total = custo_mat + custo_mo
 
-                texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
-                self.lbl_res_baldrame.text = texto_res
+            texto_res = (
+                f"{txt('label_volume')} ({fmt_num(perda, 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
+                f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
+                f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
+                f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
+            )
+            if custo_mo > 0:
+                texto_res += f"• {txt('label_mo')}: {fmt_num(comp, 1)}m ({fmt_moeda(custo_mo)})\n"
 
-                self.ultimo_resultado = {
-                    "etapa": txt("secao_baldrame"),
-                    "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
-                    "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
-                    "resumo_texto": texto_res
-                }
+            texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
+            self.lbl_res_baldrame.text = texto_res
+
+            self.ultimo_resultado = {
+                "etapa": txt("secao_baldrame"),
+                "tipo": "baldrame",
+                "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
+                "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
+                "resumo_texto": texto_res,
+                "inputs": {"comp": comp, "larg": larg, "alt": alt, "perda": perda, "mo": preco_mo}
+            }
         except ValueError:
             self.lbl_res_baldrame.text = txt("msg_erro_num")
 
-    def voltar_home(self, instance):
-        self.manager.current = "home"
+    # --- USADO PELO HISTÓRICO (visualizar / editar) ---
+    @staticmethod
+    def _texto_campo(valor) -> str:
+        if isinstance(valor, float) and valor.is_integer():
+            valor = int(valor)
+        return str(valor).replace('.', CONFIG_APP["separador_decimal"])
 
-    def finalizar_e_ir_resumo(self, instance):
-        if self.ultimo_resultado:
-            ORCAMENTO_FINAL.clear()
-            ORCAMENTO_FINAL.append(self.ultimo_resultado)
-            summary_screen = self.manager.get_screen("summary")
-            summary_screen.atualizar_resumo()
-            self.manager.current = "summary"
-        else:
-            self.lbl_resultado.text = txt("msg_inicial")
-
-# --- TELA DE CÁLCULO (BALDRAME) ---
-class BaldrameCalculatorScreen(MDScreen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.name = "baldrame_calculator"
-        self.md_bg_color = self.theme_cls.backgroundColor
-        self.ultimo_resultado = None
-        self.modo_somente_leitura = False
-        
-        self.layout_principal = MDBoxLayout(orientation="vertical", padding="16dp", spacing="12dp")
-        self.add_widget(self.layout_principal)
-        self.montar_tela()
-
-    def montar_tela(self):
-        self.layout_principal.clear_widgets()
-        
-        # Topo
-        topo = MDBoxLayout(size_hint_y=None, height="40dp", spacing="10dp")
-        self.btn_voltar = MDButton(MDButtonText(text=txt("btn_voltar")), on_release=self.voltar_home)
-        self.titulo_topo = MDLabel(
-            text=f"{txt('titulo_baldrame')} ({CONFIG_APP['estado']})", 
-            font_style="Title", 
-            role="medium", 
-            bold=True, 
-            theme_text_color="Primary"
-        )
-        topo.add_widget(self.btn_voltar)
-        topo.add_widget(self.titulo_topo)
-        
-        # Scroll com o Formulário
-        scroll = MDScrollView()
-        box_form = MDBoxLayout(orientation="vertical", spacing="16dp", padding="8dp", size_hint_y=None)
-        box_form.bind(minimum_height=box_form.setter('height'))
-        
-        # Seção Principal - Inputs do Baldrame
-        self.lbl_secao = MDLabel(text=txt("secao_baldrame"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
-        
-        self.in_comp = MDTextField(MDTextFieldHintText(text=txt("hint_comprimento")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_larg = MDTextField(MDTextFieldHintText(text=txt("hint_largura")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_alt = MDTextField(MDTextFieldHintText(text=txt("hint_altura")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        
-        # Seção Opcional (Mão de obra / Perdas / etc)
-        self.lbl_opcional = MDLabel(text=txt("secao_opcional"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
-        self.in_perda = MDTextField(MDTextFieldHintText(text=txt("hint_perda")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        
-        box_form.add_widget(self.lbl_secao)
-        box_form.add_widget(self.in_comp)
-        box_form.add_widget(self.in_larg)
-        box_form.add_widget(self.in_alt)
-        box_form.add_widget(self.lbl_opcional)
-        box_form.add_widget(self.in_perda)
-        box_form.add_widget(self.in_mo)
-        
-        # Botão Calcular
-        if not self.modo_somente_leitura:
-            self.btn_calcular = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo)
-            box_form.add_widget(self.btn_calcular)
-            
-        # Área de Resultados
-        box_resultado = MDBoxLayout(orientation="vertical", spacing="12dp", padding=("0dp", "16dp", "0dp", "0dp"), size_hint_y=None)
-        box_resultado.bind(minimum_height=box_resultado.setter('height'))
-        
-        self.lbl_resultado = MDLabel(text=txt("msg_inicial"), theme_text_color="Secondary", size_hint_y=None)
-        self.lbl_resultado.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
-        
-        box_resultado.add_widget(self.lbl_resultado)
-        
-        # Botão Finalizar
-        if not self.modo_somente_leitura:
-            self.btn_finalizar = MDButton(MDButtonText(text=txt("btn_finalizar")), pos_hint={"center_x": 0.5}, on_release=self.finalizar_e_ir_resumo)
-            box_resultado.add_widget(self.btn_finalizar)
-            
-        box_form.add_widget(box_resultado)
-        scroll.add_widget(box_form)
-        
-        self.layout_principal.add_widget(topo)
-        self.layout_principal.add_widget(scroll)
-
-    def atualizar_interface(self):
-        self.montar_tela()
-
-    def voltar_home(self, instance):
-        for child in self.layout_principal.children:
-            if isinstance(child, MDScrollView):
-                child.scroll_y = 1.0
-        
-        if getattr(self, "origem", "home") == "history":
-            self.manager.current = "history"
-        else:
-            self.manager.current = "home"
-
-    def preencher_campos(self, inputs_dict: dict, modo_leitura: bool = False):
+    def preencher_campos(self, inputs_dict: dict, modo_leitura: bool = False, tipo: str = "brocas"):
         self.modo_somente_leitura = modo_leitura
+        self.aba_atual = tipo if tipo in ("brocas", "baldrame") else "brocas"
         self.montar_tela()
-        
-        if "comp" in inputs_dict: self.in_comp.text = str(inputs_dict["comp"])
-        if "larg" in inputs_dict: self.in_larg.text = str(inputs_dict["larg"])
-        if "alt" in inputs_dict: self.in_alt.text = str(inputs_dict["alt"])
-        if "perda" in inputs_dict: self.in_perda.text = str(inputs_dict["perda"])
-        if "mo" in inputs_dict: self.in_mo.text = str(inputs_dict["mo"])
 
-    def executar_calculo(self, instance):
-        try:
-            t_comp = self.in_comp.text.strip()
-            t_larg = self.in_larg.text.strip()
-            t_alt = self.in_alt.text.strip()
-            
-            if not t_comp or not t_larg or not t_alt:
-                self.lbl_resultado.text = txt("msg_erro_num")
-                return
-                
-            comp = float(t_comp.replace(',', '.'))
-            larg = float(t_larg.replace(',', '.'))
-            alt = float(t_alt.replace(',', '.'))
-            
-            t_perda = self.in_perda.text.strip()
-            perda = float(t_perda.replace(',', '.')) if t_perda else 10.0
-            
-            t_mo = self.in_mo.text.strip()
-            preco_mo = float(t_mo.replace(',', '.')) if t_mo else 0.0
-            
-            # Chamada da função do calculador de baldrame
-            res = calcular_baldrame(
-                comprimento_m=comp,
-                largura_cm=larg,
-                altura_cm=alt
-            )
-            
-            if "erro" in res:
-                self.lbl_resultado.text = f"Erro: {res['erro']}"
-            else:
-                custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
-                custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
-                custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
-                custo_mo = comp * preco_mo
-                custo_mat = custo_cimento + custo_areia + custo_pedra
-                custo_total = custo_mat + custo_mo
-                
-                texto_res = (
-                    f"{txt('label_volume')} ({fmt_num(perda, 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
-                    f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
-                    f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
-                    f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
-                )
-                
-                if custo_mo > 0:
-                    texto_res += f"• {txt('label_mo')}: {fmt_num(comp, 1)}m ({fmt_moeda(custo_mo)})\n"
-                
-                texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
-                self.lbl_resultado.text = texto_res
-                
-                self.ultimo_resultado = {
-                    "etapa": txt("secao_baldrame"),
-                    "cimento": res['sacos_cimento'],
-                    "areia": res['areia_m3'],
-                    "pedra": res['pedra_m3'],
-                    "custo_mat": custo_mat,
-                    "custo_mo": custo_mo,
-                    "custo_total": custo_total,
-                    "resumo_texto": texto_res,
-                    "inputs": {"comp": comp, "larg": larg, "alt": alt, "perda": perda, "mo": preco_mo}
-                }
-        except ValueError:
-            self.lbl_resultado.text = txt("msg_erro_num")
+        if self.aba_atual == "baldrame":
+            campos = {
+                "comp": self.in_bal_comp, "larg": self.in_bal_larg, "alt": self.in_bal_alt,
+                "perda": self.in_bal_perda, "mo": self.in_bal_mo,
+            }
+        else:
+            campos = {
+                "qtd": self.in_qtd, "prof": self.in_prof, "diam": self.in_diam,
+                "perda": self.in_perda, "barras": self.in_barras, "mo": self.in_mo,
+            }
+        for chave, campo in campos.items():
+            if chave in inputs_dict:
+                campo.text = self._texto_campo(inputs_dict[chave])
+
+    def executar_calculo(self, instance=None):
+        if self.aba_atual == "baldrame":
+            self.executar_calculo_baldrame(instance)
+        else:
+            self.executar_calculo_brocas(instance)
+
+    def voltar_home(self, instance):
+        destino = "history" if self.origem == "history" else "home"
+        self.origem = "home"
+        self.manager.current = destino
 
     def finalizar_e_ir_resumo(self, instance):
         if self.ultimo_resultado:
@@ -1021,7 +917,8 @@ class BaldrameCalculatorScreen(MDScreen):
             summary_screen.atualizar_resumo()
             self.manager.current = "summary"
         else:
-            self.lbl_resultado.text = txt("msg_inicial")
+            lbl = self.lbl_res_baldrame if self.aba_atual == "baldrame" else self.lbl_resultado
+            lbl.text = txt("msg_inicial")
 
 
 # --- TELA DE RESUMO CONSOLIDADO ---
@@ -1275,7 +1172,7 @@ class HistoryScreen(MDScreen):
             inputs = dados[0].get("inputs", {})
             calc_screen = self.manager.get_screen("calculator")
             calc_screen.origem = "history"
-            calc_screen.preencher_campos(inputs, modo_leitura=True)
+            calc_screen.preencher_campos(inputs, modo_leitura=True, tipo=dados[0].get("tipo", "brocas"))
             calc_screen.executar_calculo(None)
             self.manager.current = "calculator"
 
@@ -1285,7 +1182,7 @@ class HistoryScreen(MDScreen):
             inputs = dados[0].get("inputs", {})
             calc_screen = self.manager.get_screen("calculator")
             calc_screen.origem = "history"
-            calc_screen.preencher_campos(inputs, modo_leitura=False)
+            calc_screen.preencher_campos(inputs, modo_leitura=False, tipo=dados[0].get("tipo", "brocas"))
             self.manager.current = "calculator"
 
     def duplicar_popup(self, item):
