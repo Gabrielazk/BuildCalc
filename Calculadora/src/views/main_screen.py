@@ -1,9 +1,12 @@
+import math
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
-from kivymd.uix.button import MDButton, MDButtonText, MDIconButton
+from kivy.metrics import dp
+from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon, MDIconButton
+from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.dialog import (
@@ -14,8 +17,14 @@ from kivymd.uix.dialog import (
     MDDialogContentContainer
 )
 
-from src.calculators.brocas import calcular_brocas
-from src.calculators.baldrame import calcular_baldrame
+from src.calculators.brocas import (
+    calcular_brocas,
+    BITOLAS_LONGITUDINAL,
+    BITOLA_PADRAO,
+    ESPACAMENTO_ESTRIBO_PADRAO_CM
+)
+from src.calculators.baldrame import calcular_baldrame, PERDA_PADRAO_BALDRAME, LITROS_POR_LATA
+from src.calculators.tracos import TRACOS_CONCRETO, TRACO_CONCRETO_PADRAO
 from src.models.material import TabelaPrecos
 from src.models.database import (
     salvar_orcamento,
@@ -56,27 +65,43 @@ TEXTOS = {
         "aba_brocas": "Brocas",
         "aba_baldrame": "Baldrame",
         "secao_dimensoes": "Dimensões (Obrigatório)",
+        "label_traco": "Traço do concreto (cimento:areia:brita) (Opcional)",
+        "label_traco_curto": "Traço",
+        "btn_limpar": "Limpar",
+        "btn_anterior": "Anterior",
+        "btn_proximo": "Próximo",
+        "btn_confirmar": "Confirmar",
+        "dialog_limpar": "Apagar os dados desta aba? As outras abas não serão afetadas.",
+        "nota_opcionais": "Os campos opcionais já vêm com valores padrão. Altere só se quiser.",
+        "secao_armadura": "Armadura / Ferragem (Opcional)",
+        "label_bitola": "Bitola do ferro (mm)",
+        "hint_esp_estribo": "Espaçamento dos estribos em cm (ex: 20)",
+        "label_ferro": "Ferro",
+        "label_estribos": "Estribos",
+        "un_barras12": "barras de 12 m",
+        "titulo_ajuda": "Ajuda",
+        "ajuda_brocas": "Informe a quantidade de brocas, o diâmetro (ex.: 20 cm) e a profundidade média de cada uma. Se quiser, inclua a armadura. O app estima o concreto e o ferro necessários.\n\nOs estribos só entram se você informar as barras. Para não incluir estribos, deixe o espaçamento em branco.",
+        "ajuda_baldrame": "Informe o comprimento total das vigas, a largura e a altura. Se quiser, inclua a quantidade de barras, a bitola, o espaçamento dos estribos e a impermeabilização.",
         "titulo_brocas": "Brocas / Estacas",
-        "secao_brocas": "1. Brocas / Estacas (Obrigatório)",
-        "secao_opcional": "Opções Avançadas (Opcional)",
+        "secao_brocas": "Brocas",
         "hint_qtd": "Quantidade de brocas (ex: 10)",
-        "hint_prof": "Profundidade em metros (ex: 3,0)",
+        "hint_prof": "Profundidade média em metros (ex: 3,0)",
         "hint_diam": "Diâmetro em cm (ex: 20)",
         "hint_perda": "Taxa de Perda % (opcional, ex: 10)",
         "hint_barras": "Nº de barras por broca (opcional, ex: 4)",
         "hint_mo": "Mão de obra por metro (opcional, ex: 25,00)",
-        "btn_calcular": "Calcular Material e Valor",
-        "btn_finalizar": "Ir para o Resumo ->",
+        "btn_calcular": "Calcular",
+        "btn_finalizar": "Finalizar",
         "msg_inicial": "Preencha os dados e clique em calcular.",
         "msg_erro_num": "Por favor, digite números válidos nos campos obrigatórios!",
         "label_volume": "Volume Total",
         "label_cimento": "Cimento",
         "label_areia": "Areia",
-        "label_pedra": "Pedra",
+        "label_pedra": "Brita",
         "label_aco": "Aço/Ferragem",
         "label_mo": "Mão de Obra",
         "label_custo": "Custo Estimado da Etapa",
-        "un_sacos": "sacos",
+        "un_sacos": "sacos de 50 kg",
         "titulo_resumo": "Orçamento Consolidado",
         "lbl_resumo_vazio": "Nenhum cálculo finalizado ainda.",
         "btn_novo_calc": "<- Voltar aos Cálculos",
@@ -121,10 +146,18 @@ TEXTOS = {
         "hint_brita": "Brita (m³)",
         "hint_mao_obra": "Mão de Obra (m²)",
         "titulo_baldrame": "Cálculo de Baldrame",
-        "secao_baldrame": "Dimensões da Viga Baldrame",
+        "secao_baldrame": "Baldrame",
         "hint_comprimento": "Comprimento total em metros (ex: 12,5)",
         "hint_largura": "Largura da viga em cm (ex: 20)",
-        "hint_altura": "Altura da viga em cm (ex: 30)"
+        "hint_altura": "Altura da viga em cm (ex: 30)",
+        "hint_perda_bal": "Taxa de Perda % (opcional, ex: 5)",
+        "hint_barras_bal": "Nº de barras por viga (opcional, ex: 4)",
+        "label_imperm": "Impermeabilização (Opcional)",
+        "label_imperm_item": "Impermeabilizante",
+        "opcao_sim": "Sim",
+        "opcao_nao": "Não",
+        "un_latas": "latas de 18 L",
+        "un_lata": "lata de 18 L"
     },
     "en": {
         "titulo_app": "BuildCalc Pro",
@@ -142,17 +175,33 @@ TEXTOS = {
         "aba_brocas": "Drilled Shafts",
         "aba_baldrame": "Grade Beam",
         "secao_dimensoes": "Dimensions (Required)",
+        "label_traco": "Concrete mix (cement:sand:gravel) (Optional)",
+        "label_traco_curto": "Mix",
+        "btn_limpar": "Clear",
+        "btn_anterior": "Previous",
+        "btn_proximo": "Next",
+        "btn_confirmar": "Confirm",
+        "dialog_limpar": "Clear the data in this tab? Other tabs will not be affected.",
+        "nota_opcionais": "Optional fields come with default values. Change them only if you want to.",
+        "secao_armadura": "Rebar (Optional)",
+        "label_bitola": "Rebar size (mm)",
+        "hint_esp_estribo": "Stirrup spacing in cm (ex: 20)",
+        "label_ferro": "Rebar",
+        "label_estribos": "Stirrups",
+        "un_barras12": "12 m bars",
+        "titulo_ajuda": "Help",
+        "ajuda_brocas": "Enter the number of piles, the diameter (e.g. 20 cm) and the average depth of each one. If you like, add the rebar. The app estimates the concrete and steel needed.\n\nStirrups are only included if you enter the bars. To leave stirrups out, keep the spacing empty.",
+        "ajuda_baldrame": "Enter the total length of the grade beams, their width and height. If you like, add the number of bars, bar size, stirrup spacing and waterproofing.",
         "titulo_brocas": "Drilled Shafts / Piles",
-        "secao_brocas": "1. Drilled Shafts / Piles (Required)",
-        "secao_opcional": "Advanced Options (Optional)",
+        "secao_brocas": "Drilled Shafts",
         "hint_qtd": "Quantity of shafts (ex: 10)",
-        "hint_prof": "Depth in meters (ex: 3.0)",
+        "hint_prof": "Average depth in meters (ex: 3.0)",
         "hint_diam": "Diameter in cm (ex: 20)",
         "hint_perda": "Waste Rate % (optional, ex: 10)",
         "hint_barras": "Rebars per shaft (optional, ex: 4)",
         "hint_mo": "Labor cost per meter (optional, ex: 25.00)",
-        "btn_calcular": "Calculate Materials & Price",
-        "btn_finalizar": "View Summary ->",
+        "btn_calcular": "Calculate",
+        "btn_finalizar": "Finish",
         "msg_inicial": "Fill in the fields and click calculate.",
         "msg_erro_num": "Please enter valid numbers in required fields!",
         "label_volume": "Total Volume",
@@ -162,7 +211,7 @@ TEXTOS = {
         "label_aco": "Steel Rebar",
         "label_mo": "Labor Cost",
         "label_custo": "Estimated Stage Cost",
-        "un_sacos": "bags",
+        "un_sacos": "bags of 50 kg",
         "titulo_resumo": "Consolidated Estimate",
         "lbl_resumo_vazio": "No calculation finalized yet.",
         "btn_novo_calc": "<- Back to Calculations",
@@ -207,10 +256,18 @@ TEXTOS = {
         "hint_brita": "Gravel (m³)",
         "hint_mao_obra": "Labor Cost (m²)",
         "titulo_baldrame": "Grade Beam Calculation",
-        "secao_baldrame": "Grade Beam Dimensions",
+        "secao_baldrame": "Grade Beam",
         "hint_comprimento": "Total length in meters (ex: 12.5)",
         "hint_largura": "Beam width in cm (ex: 20)",
-        "hint_altura": "Beam height in cm (ex: 30)"
+        "hint_altura": "Beam height in cm (ex: 30)",
+        "hint_perda_bal": "Waste Rate % (optional, ex: 5)",
+        "hint_barras_bal": "Number of bars per beam (optional, ex: 4)",
+        "label_imperm": "Waterproofing (Optional)",
+        "label_imperm_item": "Waterproofing",
+        "opcao_sim": "Yes",
+        "opcao_nao": "No",
+        "un_latas": "18 L cans",
+        "un_lata": "18 L can"
     }
 }
 
@@ -566,11 +623,7 @@ class HomeScreen(MDScreen):
     def ir_para_calculadora(self, instance):
         ORCAMENTO_FINAL.clear()
         calc_screen = self.manager.get_screen("calculator")
-        calc_screen.ultimo_resultado = None
-        calc_screen.modo_somente_leitura = False
-        calc_screen.origem = "home"
-        calc_screen.aba_atual = "brocas"
-        calc_screen.atualizar_interface()
+        calc_screen.reiniciar()
         for child in calc_screen.layout_principal.children:
             if isinstance(child, MDScrollView):
                 child.scroll_y = 1.0
@@ -583,56 +636,93 @@ class HomeScreen(MDScreen):
 
 
 # --- TELA DE CÁLCULO COM ABAS (Navegação Interna) ---
+# Ordem das abas no fluxo (botão Próximo). Aba nova entra aqui.
+ABAS_ORDEM = ["brocas", "baldrame"]
+
+# Campos de texto que cada aba guarda (chave usada no estado e no Histórico)
+CAMPOS_ABA = {
+    "brocas": ["qtd", "prof", "diam", "perda", "barras", "esp_estribo", "mo"],
+    "baldrame": ["comp", "larg", "alt", "perda", "mo", "barras", "esp_estribo"],
+}
+# Se algum destes tiver texto, a aba conta como preenchida (aba em branco é ignorada)
+CAMPOS_INICIAIS = {
+    "brocas": ["qtd", "prof", "diam", "barras", "mo"],
+    "baldrame": ["comp", "larg", "alt", "barras", "mo"],
+}
+
+
 class CalculatorScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "calculator"
-        self.aba_atual = "brocas"
-        self.origem = "home"
         self.md_bg_color = self.theme_cls.backgroundColor
-        self.ultimo_resultado = None
-        self.modo_somente_leitura = False
-        
+        self.reiniciar(montar=False)
+
         self.layout_principal = MDBoxLayout(orientation="vertical", padding="16dp", spacing="12dp")
         self.add_widget(self.layout_principal)
         self.montar_tela()
 
+    def reiniciar(self, montar=True):
+        """Nova obra: apaga os dados de todas as abas e volta aos valores padrão."""
+        self.aba_atual = ABAS_ORDEM[0]
+        self.origem = "home"
+        self.modo_somente_leitura = False
+        self.estado_abas = {}        # texto digitado em cada aba
+        self.textos_resultado = {}   # último resultado mostrado em cada aba
+        self.traco = {"brocas": TRACO_CONCRETO_PADRAO, "baldrame": TRACO_CONCRETO_PADRAO}
+        self.bitola = {"brocas": BITOLA_PADRAO, "baldrame": BITOLA_PADRAO}
+        self.imperm = {"baldrame": False}
+        self._campos = {}            # campos da aba aberta no momento
+        self._botoes_traco = {}
+        self._botoes_bitola = {}
+        self._botoes_imperm = {}
+        self._lbl_resultado = None
+        self.menu_ativo = None
+        self.dialog_ajuda = None
+        self.dialog_limpar = None
+        if montar:
+            self.montar_tela()
+
     def montar_tela(self):
         self.layout_principal.clear_widgets()
-        
+
         # --- TOPO (Botão Voltar + Título) ---
         topo = MDBoxLayout(size_hint_y=None, height="40dp", spacing="10dp")
         self.btn_voltar = MDButton(MDButtonText(text=txt("btn_voltar")), on_release=self.voltar_home)
         self.titulo_topo = MDLabel(
-            text=f"{txt('titulo_calculadora')} ({CONFIG_APP['estado']})", 
-            font_style="Title", 
-            role="medium", 
-            bold=True, 
+            text=f"{txt('titulo_calculadora')} ({CONFIG_APP['estado']})",
+            font_style="Title",
+            role="medium",
+            bold=True,
             theme_text_color="Primary"
         )
         topo.add_widget(self.btn_voltar)
         topo.add_widget(self.titulo_topo)
         self.layout_principal.add_widget(topo)
 
-        # --- CONTAINER DE ABAS (MDTabs) --
-        # Se estiver usando KivyMD 3.0 com MDTabsPrimary / MDTabsItem:
+        # --- ABAS + AJUDA "?" ---
         box_tabs = MDBoxLayout(size_hint_y=None, height="48dp", spacing="8dp")
-        
+
         self.btn_tab_brocas = MDButton(
-            MDButtonText(text=txt("aba_brocas")), 
-            style="outlined", 
-            disabled=self.modo_somente_leitura,
+            MDButtonText(text=txt("aba_brocas")),
+            style="outlined",
             on_release=lambda x: self.trocar_aba("brocas")
         )
         self.btn_tab_baldrame = MDButton(
-            MDButtonText(text=txt("aba_baldrame")), 
-            style="outlined", 
-            disabled=self.modo_somente_leitura,
+            MDButtonText(text=txt("aba_baldrame")),
+            style="outlined",
             on_release=lambda x: self.trocar_aba("baldrame")
         )
-        
+
         box_tabs.add_widget(self.btn_tab_brocas)
         box_tabs.add_widget(self.btn_tab_baldrame)
+        box_tabs.add_widget(MDWidget())
+        self.btn_ajuda = MDIconButton(
+            icon="help-circle-outline",
+            pos_hint={"center_y": 0.5},
+            on_release=self.abrir_ajuda
+        )
+        box_tabs.add_widget(self.btn_ajuda)
         self.layout_principal.add_widget(box_tabs)
 
         # --- ÁREA DINÂMICA (Conteúdo das Abas) ---
@@ -645,15 +735,35 @@ class CalculatorScreen(MDScreen):
     def atualizar_interface(self):
         self.montar_tela()
 
+    # ==========================================
+    # ESTADO DE CADA ABA (não perde o que foi digitado ao trocar de aba)
+    # ==========================================
+    def _capturar_estado(self):
+        if not self._campos:
+            return
+        self.estado_abas[self.aba_atual] = {chave: campo.text for chave, campo in self._campos.items()}
+
+    def _restaurar_estado(self):
+        estado = self.estado_abas.get(self.aba_atual, {})
+        for chave, campo in self._campos.items():
+            if chave in estado:
+                campo.text = estado[chave]
+        texto = self.textos_resultado.get(self.aba_atual)
+        if texto and self._lbl_resultado is not None:
+            self._lbl_resultado.text = texto
+
     def trocar_aba(self, aba_nome):
+        self._capturar_estado()
         self.aba_atual = aba_nome
-        self.ultimo_resultado = None
+        self._campos = {}
         self.container_conteudo.clear_widgets()
 
         if aba_nome == "brocas":
             self.container_conteudo.add_widget(self.montar_conteudo_brocas())
         elif aba_nome == "baldrame":
             self.container_conteudo.add_widget(self.montar_conteudo_baldrame())
+
+        self._restaurar_estado()
 
     # ==========================================
     # CONTEÚDO DA ABA 1: BROCAS
@@ -662,28 +772,47 @@ class CalculatorScreen(MDScreen):
         scroll = MDScrollView()
         box_form = MDBoxLayout(orientation="vertical", spacing="16dp", padding="8dp", size_hint_y=None)
         box_form.bind(minimum_height=box_form.setter('height'))
+        ro = self.modo_somente_leitura
 
-        self.in_qtd = MDTextField(MDTextFieldHintText(text=txt("hint_qtd")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_prof = MDTextField(MDTextFieldHintText(text=txt("hint_prof")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_diam = MDTextField(MDTextFieldHintText(text=txt("hint_diam")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-
-        self.lbl_opcional = MDLabel(text=txt("secao_opcional"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
-        self.in_perda = MDTextField(MDTextFieldHintText(text=txt("hint_perda")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_barras = MDTextField(MDTextFieldHintText(text=txt("hint_barras")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-
+        # --- Obrigatórios ---
         self.lbl_obrigatorio = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_qtd = MDTextField(MDTextFieldHintText(text=txt("hint_qtd")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_prof = MDTextField(MDTextFieldHintText(text=txt("hint_prof")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_diam = MDTextField(MDTextFieldHintText(text=txt("hint_diam")), mode="outlined", write_tab=False, readonly=ro)
         box_form.add_widget(self.lbl_obrigatorio)
         box_form.add_widget(self.in_qtd)
-        box_form.add_widget(self.in_prof)
         box_form.add_widget(self.in_diam)
-        box_form.add_widget(self.lbl_opcional)
+        box_form.add_widget(self.in_prof)
+
+        # --- Opcionais (já vêm preenchidos com valores padrão; os rótulos dizem "opcional") ---
+        self._montar_seletor_traco(box_form, "brocas")
+
+        self.in_perda = MDTextField(MDTextFieldHintText(text=txt("hint_perda")), text="10", mode="outlined", write_tab=False, readonly=ro)
+        self.in_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=ro)
         box_form.add_widget(self.in_perda)
-        box_form.add_widget(self.in_barras)
         box_form.add_widget(self.in_mo)
 
-        if not self.modo_somente_leitura:
-            self.btn_calcular = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo_brocas)
+        # --- Armadura ---
+        self.lbl_armadura = MDLabel(text=txt("secao_armadura"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_barras = MDTextField(MDTextFieldHintText(text=txt("hint_barras")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_esp_estribo = MDTextField(
+            MDTextFieldHintText(text=txt("hint_esp_estribo")),
+            text=self._texto_campo(ESPACAMENTO_ESTRIBO_PADRAO_CM),
+            mode="outlined", write_tab=False, readonly=ro
+        )
+        box_form.add_widget(self.lbl_armadura)
+        box_form.add_widget(self.in_barras)
+        self._montar_seletor_bitola(box_form, "brocas")
+        box_form.add_widget(self.in_esp_estribo)
+
+        self._campos = {
+            "qtd": self.in_qtd, "prof": self.in_prof, "diam": self.in_diam,
+            "perda": self.in_perda, "mo": self.in_mo,
+            "barras": self.in_barras, "esp_estribo": self.in_esp_estribo,
+        }
+
+        if not ro:
+            self.btn_calcular = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo)
             box_form.add_widget(self.btn_calcular)
 
         box_resultado = MDBoxLayout(orientation="vertical", spacing="12dp", padding=("0dp", "16dp", "0dp", "0dp"), size_hint_y=None)
@@ -691,12 +820,10 @@ class CalculatorScreen(MDScreen):
 
         self.lbl_resultado = MDLabel(text=txt("msg_inicial"), theme_text_color="Secondary", size_hint_y=None)
         self.lbl_resultado.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
-
+        self._lbl_resultado = self.lbl_resultado
         box_resultado.add_widget(self.lbl_resultado)
 
-        if not self.modo_somente_leitura:
-            self.btn_finalizar = MDButton(MDButtonText(text=txt("btn_finalizar")), pos_hint={"center_x": 0.5}, on_release=self.finalizar_e_ir_resumo)
-            box_resultado.add_widget(self.btn_finalizar)
+        self._montar_botoes_fluxo(box_resultado)
 
         box_form.add_widget(box_resultado)
         scroll.add_widget(box_form)
@@ -709,26 +836,54 @@ class CalculatorScreen(MDScreen):
         scroll = MDScrollView()
         box_form = MDBoxLayout(orientation="vertical", spacing="16dp", padding="8dp", size_hint_y=None)
         box_form.bind(minimum_height=box_form.setter('height'))
+        ro = self.modo_somente_leitura
 
-        self.in_bal_comp = MDTextField(MDTextFieldHintText(text=txt("hint_comprimento")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_bal_larg = MDTextField(MDTextFieldHintText(text=txt("hint_largura")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_bal_alt = MDTextField(MDTextFieldHintText(text=txt("hint_altura")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-
-        self.lbl_opcional_bal = MDLabel(text=txt("secao_opcional"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
-        self.in_bal_perda = MDTextField(MDTextFieldHintText(text=txt("hint_perda")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-        self.in_bal_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=self.modo_somente_leitura)
-
+        # --- Obrigatórios ---
         self.lbl_obrigatorio_bal = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_bal_comp = MDTextField(MDTextFieldHintText(text=txt("hint_comprimento")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_bal_larg = MDTextField(MDTextFieldHintText(text=txt("hint_largura")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_bal_alt = MDTextField(MDTextFieldHintText(text=txt("hint_altura")), mode="outlined", write_tab=False, readonly=ro)
         box_form.add_widget(self.lbl_obrigatorio_bal)
         box_form.add_widget(self.in_bal_comp)
         box_form.add_widget(self.in_bal_larg)
         box_form.add_widget(self.in_bal_alt)
-        box_form.add_widget(self.lbl_opcional_bal)
+
+        # --- Opcionais (já vêm preenchidos com valores padrão; os rótulos dizem "opcional") ---
+        self._montar_seletor_traco(box_form, "baldrame")
+
+        self.in_bal_perda = MDTextField(
+            MDTextFieldHintText(text=txt("hint_perda_bal")),
+            text=self._texto_campo(PERDA_PADRAO_BALDRAME),
+            mode="outlined", write_tab=False, readonly=ro
+        )
+        self.in_bal_mo = MDTextField(MDTextFieldHintText(text=txt("hint_mo")), mode="outlined", write_tab=False, readonly=ro)
         box_form.add_widget(self.in_bal_perda)
         box_form.add_widget(self.in_bal_mo)
 
-        if not self.modo_somente_leitura:
-            self.btn_calc_bal = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo_baldrame)
+        # --- Armadura ---
+        self.lbl_armadura_bal = MDLabel(text=txt("secao_armadura"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_bal_barras = MDTextField(MDTextFieldHintText(text=txt("hint_barras_bal")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_bal_esp_estribo = MDTextField(
+            MDTextFieldHintText(text=txt("hint_esp_estribo")),
+            text=self._texto_campo(ESPACAMENTO_ESTRIBO_PADRAO_CM),
+            mode="outlined", write_tab=False, readonly=ro
+        )
+        box_form.add_widget(self.lbl_armadura_bal)
+        box_form.add_widget(self.in_bal_barras)
+        self._montar_seletor_bitola(box_form, "baldrame")
+        box_form.add_widget(self.in_bal_esp_estribo)
+
+        # --- Impermeabilização (Sim / Não) ---
+        self._montar_seletor_imperm(box_form, "baldrame")
+
+        self._campos = {
+            "comp": self.in_bal_comp, "larg": self.in_bal_larg, "alt": self.in_bal_alt,
+            "perda": self.in_bal_perda, "mo": self.in_bal_mo,
+            "barras": self.in_bal_barras, "esp_estribo": self.in_bal_esp_estribo,
+        }
+
+        if not ro:
+            self.btn_calc_bal = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo)
             box_form.add_widget(self.btn_calc_bal)
 
         box_res = MDBoxLayout(orientation="vertical", spacing="12dp", padding=("0dp", "16dp", "0dp", "0dp"), size_hint_y=None)
@@ -736,141 +891,340 @@ class CalculatorScreen(MDScreen):
 
         self.lbl_res_baldrame = MDLabel(text=txt("msg_inicial"), theme_text_color="Secondary", size_hint_y=None)
         self.lbl_res_baldrame.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
-
+        self._lbl_resultado = self.lbl_res_baldrame
         box_res.add_widget(self.lbl_res_baldrame)
 
-        if not self.modo_somente_leitura:
-            self.btn_fin_bal = MDButton(MDButtonText(text=txt("btn_finalizar")), pos_hint={"center_x": 0.5}, on_release=self.finalizar_e_ir_resumo)
-            box_res.add_widget(self.btn_fin_bal)
+        self._montar_botoes_fluxo(box_res)
 
         box_form.add_widget(box_res)
         scroll.add_widget(box_form)
         return scroll
 
-    # --- EXECUÇÃO DOS CÁLCULOS ---
-    def executar_calculo_brocas(self, instance):
-        try:
-            t_qtd = self.in_qtd.text.strip()
-            t_prof = self.in_prof.text.strip()
-            t_diam = self.in_diam.text.strip()
-            
-            if not t_qtd or not t_prof or not t_diam:
-                self.lbl_resultado.text = txt("msg_erro_num")
-                return
-                
-            qtd = int(t_qtd)
-            prof = float(t_prof.replace(',', '.'))
-            diam = float(t_diam.replace(',', '.'))
-            
-            t_perda = self.in_perda.text.strip()
-            perda = float(t_perda.replace(',', '.')) if t_perda else 10.0
-            t_barras = self.in_barras.text.strip()
-            num_barras = int(t_barras) if t_barras else 0
-            t_mo = self.in_mo.text.strip()
-            preco_mo = float(t_mo.replace(',', '.')) if t_mo else 0.0
-            
-            res = calcular_brocas(
-                quantidade=qtd, profundidade_m=prof, diametro_cm=diam,
-                perda_percentual=perda, incluir_ferragem=(num_barras > 0),
-                num_barras_longitudinais=num_barras, preco_mao_obra_metro=preco_mo
+    # ==========================================
+    # BOTÕES DO FLUXO: Limpar, Anterior (menos na 1ª aba), Próximo (menos na última) e Finalizar
+    # (somem no modo leitura)
+    # ==========================================
+    def _montar_botoes_fluxo(self, box):
+        if self.modo_somente_leitura:
+            return
+        posicao = ABAS_ORDEM.index(self.aba_atual)
+
+        linha = MDBoxLayout(size_hint_y=None, height="48dp", spacing="8dp")
+        linha.add_widget(MDWidget())
+        self.btn_limpar = MDButton(MDButtonText(text=txt("btn_limpar")), style="outlined", on_release=self.pedir_limpar)
+        linha.add_widget(self.btn_limpar)
+        if posicao > 0:
+            anterior = ABAS_ORDEM[posicao - 1]
+            self.btn_anterior = MDButton(MDButtonText(text=txt("btn_anterior")), style="outlined", on_release=lambda x: self.trocar_aba(anterior))
+            linha.add_widget(self.btn_anterior)
+        if posicao < len(ABAS_ORDEM) - 1:
+            proxima = ABAS_ORDEM[posicao + 1]
+            self.btn_proximo = MDButton(MDButtonText(text=txt("btn_proximo")), style="outlined", on_release=lambda x: self.trocar_aba(proxima))
+            linha.add_widget(self.btn_proximo)
+        linha.add_widget(MDWidget())
+        box.add_widget(linha)
+
+        self.btn_finalizar = MDButton(MDButtonText(text=txt("btn_finalizar")), style="filled", pos_hint={"center_x": 0.5}, on_release=self.finalizar_e_ir_resumo)
+        box.add_widget(self.btn_finalizar)
+
+    def pedir_limpar(self, instance=None):
+        if self.dialog_limpar:
+            self.dialog_limpar.dismiss()
+        self.dialog_limpar = MDDialog(
+            MDDialogHeadlineText(text=txt("btn_limpar")),
+            MDDialogSupportingText(text=txt("dialog_limpar")),
+            MDDialogButtonContainer(
+                MDButton(MDButtonText(text=txt("btn_cancelar")), on_release=lambda x: self.dialog_limpar.dismiss()),
+                MDButton(MDButtonText(text=txt("btn_confirmar")), on_release=self.limpar_aba_atual)
             )
-            
-            if "erro" in res:
-                self.lbl_resultado.text = f"Erro: {res['erro']}"
-            else:
-                custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
-                custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
-                custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
-                custo_aco = res['quilos_aco'] * TABELA_PRECOS_GLOBAL.aco_kg if res['incluiu_ferragem'] else 0.0
-                custo_mo = res['custo_mao_obra']
-                custo_mat = custo_cimento + custo_areia + custo_pedra + custo_aco
-                custo_total = custo_mat + custo_mo
-                
-                texto_res = (
-                    f"{txt('label_volume')} ({fmt_num(res['perda_percentual'], 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
-                    f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
-                    f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
-                    f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
+        )
+        self.dialog_limpar.open()
+
+    def limpar_aba_atual(self, instance=None):
+        """Apaga só a aba aberta (as outras não são afetadas)."""
+        aba = self.aba_atual
+        self.estado_abas.pop(aba, None)
+        self.textos_resultado.pop(aba, None)
+        self.traco[aba] = TRACO_CONCRETO_PADRAO
+        if aba in self.bitola:
+            self.bitola[aba] = BITOLA_PADRAO
+        if aba in self.imperm:
+            self.imperm[aba] = False
+        self._campos = {}
+        self.trocar_aba(aba)
+        if self.dialog_limpar:
+            self.dialog_limpar.dismiss()
+
+    # ==========================================
+    # DROPDOWNS (traço do concreto e bitola do ferro)
+    # ==========================================
+    @staticmethod
+    def _rotulo_bitola(bitola):
+        if float(bitola).is_integer():
+            return f"{int(bitola)} mm"
+        return f"{fmt_num(bitola, 1)} mm"
+
+    def _montar_dropdown(self, box_form, titulo, opcoes, atual, ao_escolher, rotulo=str):
+        """Título + botão que abre a lista de opções. Retorna o texto do botão (mostra a opção atual)."""
+        box_form.add_widget(MDLabel(text=titulo, font_style="Title", role="small", bold=True, theme_text_color="Primary"))
+        texto = MDButtonText(text=rotulo(atual))
+        botao = MDButton(
+            MDButtonIcon(icon="menu-down"),
+            texto,
+            style="outlined",
+            size_hint_x=1,
+            disabled=self.modo_somente_leitura,
+            on_release=lambda x: self._abrir_menu(x, opcoes, ao_escolher, rotulo)
+        )
+        box_form.add_widget(botao)
+        return texto
+
+    def _abrir_menu(self, caller, opcoes, ao_escolher, rotulo):
+        if self.menu_ativo:
+            self.menu_ativo.dismiss()
+        itens = [
+            {"text": rotulo(opcao), "on_release": lambda *args, o=opcao: self._escolher_no_menu(ao_escolher, o)}
+            for opcao in opcoes
+        ]
+        self.menu_ativo = MDDropdownMenu(caller=caller, items=itens, width=dp(200), position="bottom")
+        self.menu_ativo.open()
+
+    def _escolher_no_menu(self, ao_escolher, opcao):
+        ao_escolher(opcao)
+        if self.menu_ativo:
+            self.menu_ativo.dismiss()
+
+    # --- Traço do concreto (Brocas e Baldrame) ---
+    def _montar_seletor_traco(self, box_form, aba):
+        self._botoes_traco[aba] = self._montar_dropdown(
+            box_form, txt("label_traco"), list(TRACOS_CONCRETO.keys()), self.traco[aba],
+            lambda nome: self._escolher_traco(aba, nome)
+        )
+
+    def _escolher_traco(self, aba, nome):
+        self.traco[aba] = nome
+        if aba in self._botoes_traco:
+            self._botoes_traco[aba].text = nome
+
+    # --- Bitola do ferro ---
+    def _montar_seletor_bitola(self, box_form, aba):
+        self._botoes_bitola[aba] = self._montar_dropdown(
+            box_form, txt("label_bitola"), BITOLAS_LONGITUDINAL, self.bitola[aba],
+            lambda b: self._escolher_bitola(aba, b), rotulo=self._rotulo_bitola
+        )
+
+    def _escolher_bitola(self, aba, bitola):
+        self.bitola[aba] = bitola
+        if aba in self._botoes_bitola:
+            self._botoes_bitola[aba].text = self._rotulo_bitola(bitola)
+
+    # --- Impermeabilização (Sim / Não) ---
+    @staticmethod
+    def _rotulo_sim_nao(valor):
+        return txt("opcao_sim") if valor else txt("opcao_nao")
+
+    def _montar_seletor_imperm(self, box_form, aba):
+        self._botoes_imperm[aba] = self._montar_dropdown(
+            box_form, txt("label_imperm"), [False, True], self.imperm[aba],
+            lambda v: self._escolher_imperm(aba, v), rotulo=self._rotulo_sim_nao
+        )
+
+    def _escolher_imperm(self, aba, valor):
+        self.imperm[aba] = valor
+        if aba in self._botoes_imperm:
+            self._botoes_imperm[aba].text = self._rotulo_sim_nao(valor)
+
+    # --- Ajuda "?" da aba (inclui a nota sobre os valores padrão) ---
+    def abrir_ajuda(self, instance=None):
+        if self.dialog_ajuda:
+            self.dialog_ajuda.dismiss()
+        texto = f"{txt(f'ajuda_{self.aba_atual}')}\n\n{txt('nota_opcionais')}"
+        self.dialog_ajuda = MDDialog(
+            MDDialogHeadlineText(text=txt("titulo_ajuda")),
+            MDDialogSupportingText(text=texto),
+            MDDialogButtonContainer(
+                MDButton(MDButtonText(text=txt("btn_fechar")), on_release=lambda x: self.dialog_ajuda.dismiss())
+            )
+        )
+        self.dialog_ajuda.open()
+
+    # ==========================================
+    # CÁLCULOS (a partir do texto digitado, sem depender dos campos na tela)
+    # ==========================================
+    @staticmethod
+    def _numero(texto, padrao=0.0):
+        texto = (texto or "").strip()
+        return float(texto.replace(',', '.')) if texto else padrao
+
+    def _aba_iniciada(self, aba, estado):
+        return any((estado.get(chave) or "").strip() for chave in CAMPOS_INICIAIS[aba])
+
+    def _calcular_aba(self, aba, e):
+        """Retorna {"erro": mensagem} ou {"texto": resultado na tela, "resultado": dados da etapa}."""
+        try:
+            if aba == "baldrame":
+                return self._calcular_baldrame(e)
+            return self._calcular_brocas(e)
+        except ValueError:
+            return {"erro": txt("msg_erro_num")}
+
+    def _calcular_brocas(self, e):
+        if not (e.get("qtd") or "").strip() or not (e.get("prof") or "").strip() or not (e.get("diam") or "").strip():
+            return {"erro": txt("msg_erro_num")}
+
+        qtd = int(e["qtd"].strip())
+        prof = self._numero(e["prof"])
+        diam = self._numero(e["diam"])
+        perda = self._numero(e.get("perda"), 10.0)
+        t_barras = (e.get("barras") or "").strip()
+        num_barras = int(t_barras) if t_barras else 0
+        esp_estribo = self._numero(e.get("esp_estribo"), 0.0)
+        preco_mo = self._numero(e.get("mo"), 0.0)
+        bitola = self.bitola["brocas"]
+
+        res = calcular_brocas(
+            quantidade=qtd, profundidade_m=prof, diametro_cm=diam,
+            perda_percentual=perda, incluir_ferragem=(num_barras > 0),
+            num_barras_longitudinais=num_barras, bitola_mm=bitola,
+            preco_mao_obra_metro=preco_mo, traco=self.traco["brocas"],
+            espacamento_estribo_cm=esp_estribo
+        )
+        if "erro" in res:
+            return {"erro": f"Erro: {res['erro']}"}
+
+        custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
+        custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
+        custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
+        custo_aco = res['quilos_aco'] * TABELA_PRECOS_GLOBAL.aco_kg if res['incluiu_ferragem'] else 0.0
+        custo_mo = res['custo_mao_obra']
+        custo_mat = custo_cimento + custo_areia + custo_pedra + custo_aco
+        custo_total = custo_mat + custo_mo
+
+        texto_res = (
+            f"{txt('label_traco_curto')}: {res['traco']}\n"
+            f"{txt('label_volume')} ({fmt_num(res['perda_percentual'], 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
+            f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
+            f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
+            f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
+        )
+        if res['incluiu_ferragem']:
+            texto_res += (
+                f"• {txt('label_ferro')} {self._rotulo_bitola(res['bitola_mm'])}: "
+                f"{fmt_num(res['kg_longitudinal'], 1)} kg ({res['barras_12m_longitudinal']} {txt('un_barras12')})\n"
+            )
+            if res['incluiu_estribos']:
+                texto_res += (
+                    f"• {txt('label_estribos')} {self._rotulo_bitola(res['bitola_estribo_mm'])} "
+                    f"c/ {fmt_num(res['espacamento_estribo_cm'], 0)} cm: "
+                    f"{fmt_num(res['kg_estribos'], 1)} kg ({res['barras_12m_estribos']} {txt('un_barras12')})\n"
                 )
-                if res['incluiu_ferragem']:
-                    texto_res += f"• Aço: {fmt_num(res['quilos_aco'], 1)} kg ({res['barras_12m']} barras 12m)\n  {fmt_moeda(custo_aco)}\n"
-                if custo_mo > 0:
-                    texto_res += f"• {txt('label_mo')}: {fmt_num(res['total_metros_escavados'], 1)}m ({fmt_moeda(custo_mo)})\n"
-                
-                texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
-                self.lbl_resultado.text = texto_res
-                
-                self.ultimo_resultado = {
-                    "etapa": txt("secao_brocas"),
-                    "tipo": "brocas",
-                    "inputs": {"qtd": qtd, "prof": prof, "diam": diam, "perda": perda, "barras": num_barras, "mo": preco_mo},
-                    "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
-                    "aco_kg": res['quilos_aco'], "barras_12m": res['barras_12m'],
-                    "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
-                    "resumo_texto": texto_res
-                }
-        except ValueError:
-            self.lbl_resultado.text = txt("msg_erro_num")
+            texto_res += f"• {txt('label_aco')}: {fmt_num(res['quilos_aco'], 1)} kg ({fmt_moeda(custo_aco)})\n"
+        if custo_mo > 0:
+            texto_res += f"• {txt('label_mo')}: {fmt_num(res['total_metros_escavados'], 1)}m ({fmt_moeda(custo_mo)})\n"
+        texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
 
-    def executar_calculo_baldrame(self, instance=None):
-        self.ultimo_resultado = None
-        try:
-            t_comp = self.in_bal_comp.text.strip()
-            t_larg = self.in_bal_larg.text.strip()
-            t_alt = self.in_bal_alt.text.strip()
+        resultado = {
+            "etapa": txt("secao_brocas"),
+            "tipo": "brocas",
+            "inputs": {
+                "qtd": qtd, "prof": prof, "diam": diam, "perda": perda, "barras": num_barras,
+                "mo": preco_mo, "traco": res["traco"], "bitola": bitola, "esp_estribo": esp_estribo
+            },
+            "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
+            "aco_kg": res['quilos_aco'], "barras_12m": res['barras_12m'],
+            "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
+            "resumo_texto": texto_res
+        }
+        return {"texto": texto_res, "resultado": resultado}
 
-            if not t_comp or not t_larg or not t_alt:
-                self.lbl_res_baldrame.text = txt("msg_erro_num")
-                return
+    def _calcular_baldrame(self, e):
+        if not (e.get("comp") or "").strip() or not (e.get("larg") or "").strip() or not (e.get("alt") or "").strip():
+            return {"erro": txt("msg_erro_num")}
 
-            comp = float(t_comp.replace(',', '.'))
-            larg = float(t_larg.replace(',', '.'))
-            alt = float(t_alt.replace(',', '.'))
+        comp = self._numero(e["comp"])
+        larg = self._numero(e["larg"])
+        alt = self._numero(e["alt"])
+        perda = self._numero(e.get("perda"), PERDA_PADRAO_BALDRAME)
+        t_barras = (e.get("barras") or "").strip()
+        num_barras = int(t_barras) if t_barras else 0
+        esp_estribo = self._numero(e.get("esp_estribo"), 0.0)
+        preco_mo = self._numero(e.get("mo"), 0.0)
+        bitola = self.bitola["baldrame"]
+        imperm = self.imperm["baldrame"]
 
-            t_perda = self.in_bal_perda.text.strip()
-            perda = float(t_perda.replace(',', '.')) if t_perda else 10.0
+        res = calcular_baldrame(
+            comprimento_m=comp, largura_cm=larg, altura_cm=alt,
+            perda_percentual=perda, traco=self.traco["baldrame"],
+            num_barras_longitudinais=num_barras, bitola_mm=bitola,
+            espacamento_estribo_cm=esp_estribo, incluir_impermeabilizacao=imperm
+        )
+        if "erro" in res:
+            return {"erro": f"Erro: {res['erro']}"}
 
-            t_mo = self.in_bal_mo.text.strip()
-            preco_mo = float(t_mo.replace(',', '.')) if t_mo else 0.0
+        custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
+        custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
+        custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
+        custo_aco = res['quilos_aco'] * TABELA_PRECOS_GLOBAL.aco_kg if res['incluiu_ferragem'] else 0.0
+        custo_mo = comp * preco_mo
+        custo_mat = custo_cimento + custo_areia + custo_pedra + custo_aco
+        custo_total = custo_mat + custo_mo
 
-            res = calcular_baldrame(
-                comprimento_m=comp, largura_cm=larg, altura_cm=alt,
-                perda_percentual=perda
+        texto_res = (
+            f"{txt('label_traco_curto')}: {res['traco']}\n"
+            f"{txt('label_volume')} ({fmt_num(perda, 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
+            f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
+            f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
+            f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
+        )
+        if res['incluiu_ferragem']:
+            texto_res += (
+                f"• {txt('label_ferro')} {self._rotulo_bitola(res['bitola_mm'])}: "
+                f"{fmt_num(res['kg_longitudinal'], 1)} kg ({res['barras_12m_longitudinal']} {txt('un_barras12')})\n"
             )
-
-            if "erro" in res:
-                self.lbl_res_baldrame.text = f"Erro: {res['erro']}"
-                return
-
-            custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
-            custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
-            custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
-            custo_mo = comp * preco_mo
-            custo_mat = custo_cimento + custo_areia + custo_pedra
-            custo_total = custo_mat + custo_mo
-
-            texto_res = (
-                f"{txt('label_volume')} ({fmt_num(perda, 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
-                f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
-                f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
-                f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
+            if res['incluiu_estribos']:
+                texto_res += (
+                    f"• {txt('label_estribos')} {self._rotulo_bitola(res['bitola_estribo_mm'])} "
+                    f"c/ {fmt_num(res['espacamento_estribo_cm'], 0)} cm: "
+                    f"{fmt_num(res['kg_estribos'], 1)} kg ({res['barras_12m_estribos']} {txt('un_barras12')})\n"
+                )
+            texto_res += f"• {txt('label_aco')}: {fmt_num(res['quilos_aco'], 1)} kg ({fmt_moeda(custo_aco)})\n"
+        if res['incluiu_impermeabilizacao']:
+            un_lata = txt('un_lata') if res['latas_imperm'] == 1 else txt('un_latas')
+            texto_res += (
+                f"• {txt('label_imperm_item')}: {fmt_num(res['area_imperm_m2'], 1)} m² · "
+                f"{fmt_num(res['litros_imperm'], 1)} L ({res['latas_imperm']} {un_lata})\n"
             )
-            if custo_mo > 0:
-                texto_res += f"• {txt('label_mo')}: {fmt_num(comp, 1)}m ({fmt_moeda(custo_mo)})\n"
+        if custo_mo > 0:
+            texto_res += f"• {txt('label_mo')}: {fmt_num(comp, 1)}m ({fmt_moeda(custo_mo)})\n"
+        texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
 
-            texto_res += f"\n{txt('label_custo')}: {fmt_moeda(custo_total)}"
-            self.lbl_res_baldrame.text = texto_res
-
-            self.ultimo_resultado = {
-                "etapa": txt("secao_baldrame"),
-                "tipo": "baldrame",
-                "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
-                "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
-                "resumo_texto": texto_res,
-                "inputs": {"comp": comp, "larg": larg, "alt": alt, "perda": perda, "mo": preco_mo}
+        resultado = {
+            "etapa": txt("secao_baldrame"),
+            "tipo": "baldrame",
+            "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
+            "aco_kg": res['quilos_aco'], "barras_12m": res['barras_12m'],
+            "imperm_litros": res['litros_imperm'],
+            "custo_mat": custo_mat, "custo_mo": custo_mo, "custo_total": custo_total,
+            "resumo_texto": texto_res,
+            "inputs": {
+                "comp": comp, "larg": larg, "alt": alt, "perda": perda, "mo": preco_mo,
+                "traco": res["traco"], "barras": num_barras, "bitola": bitola,
+                "esp_estribo": esp_estribo, "imperm": imperm
             }
-        except ValueError:
-            self.lbl_res_baldrame.text = txt("msg_erro_num")
+        }
+        return {"texto": texto_res, "resultado": resultado}
+
+    def executar_calculo(self, instance=None):
+        """Botão Calcular: calcula a aba aberta e mostra o resultado."""
+        self._capturar_estado()
+        aba = self.aba_atual
+        r = self._calcular_aba(aba, self.estado_abas.get(aba, {}))
+        if "erro" in r:
+            self.textos_resultado.pop(aba, None)
+            self._lbl_resultado.text = r["erro"]
+            return
+        self.textos_resultado[aba] = r["texto"]
+        self._lbl_resultado.text = r["texto"]
 
     # --- USADO PELO HISTÓRICO (visualizar / editar) ---
     @staticmethod
@@ -880,45 +1234,61 @@ class CalculatorScreen(MDScreen):
         return str(valor).replace('.', CONFIG_APP["separador_decimal"])
 
     def preencher_campos(self, inputs_dict: dict, modo_leitura: bool = False, tipo: str = "brocas"):
+        """Carrega os valores salvos de UMA aba (o Histórico chama uma vez por aba)."""
+        aba = tipo if tipo in ABAS_ORDEM else ABAS_ORDEM[0]
         self.modo_somente_leitura = modo_leitura
-        self.aba_atual = tipo if tipo in ("brocas", "baldrame") else "brocas"
-        self.montar_tela()
+        self.aba_atual = aba
 
-        if self.aba_atual == "baldrame":
-            campos = {
-                "comp": self.in_bal_comp, "larg": self.in_bal_larg, "alt": self.in_bal_alt,
-                "perda": self.in_bal_perda, "mo": self.in_bal_mo,
-            }
-        else:
-            campos = {
-                "qtd": self.in_qtd, "prof": self.in_prof, "diam": self.in_diam,
-                "perda": self.in_perda, "barras": self.in_barras, "mo": self.in_mo,
-            }
-        for chave, campo in campos.items():
+        traco = inputs_dict.get("traco")
+        self.traco[aba] = traco if traco in TRACOS_CONCRETO else TRACO_CONCRETO_PADRAO
+        if aba in self.bitola:
+            bitola = inputs_dict.get("bitola")
+            self.bitola[aba] = bitola if bitola in BITOLAS_LONGITUDINAL else BITOLA_PADRAO
+        if aba in self.imperm:
+            self.imperm[aba] = bool(inputs_dict.get("imperm"))
+
+        estado = {}
+        for chave in CAMPOS_ABA[aba]:
             if chave in inputs_dict:
-                campo.text = self._texto_campo(inputs_dict[chave])
-
-    def executar_calculo(self, instance=None):
-        if self.aba_atual == "baldrame":
-            self.executar_calculo_baldrame(instance)
-        else:
-            self.executar_calculo_brocas(instance)
+                valor = inputs_dict[chave]
+                estado[chave] = "" if (chave == "esp_estribo" and not valor) else self._texto_campo(valor)
+            elif chave == "esp_estribo":
+                estado[chave] = ""  # orçamento antigo: não tinha estribos
+        self.estado_abas[aba] = estado
+        self._campos = {}  # não deixa os campos antigos sobrescreverem o que foi carregado
+        self.montar_tela()
 
     def voltar_home(self, instance):
         destino = "history" if self.origem == "history" else "home"
         self.origem = "home"
         self.manager.current = destino
 
-    def finalizar_e_ir_resumo(self, instance):
-        if self.ultimo_resultado:
-            ORCAMENTO_FINAL.clear()
-            ORCAMENTO_FINAL.append(self.ultimo_resultado)
-            summary_screen = self.manager.get_screen("summary")
-            summary_screen.atualizar_resumo()
-            self.manager.current = "summary"
-        else:
-            lbl = self.lbl_res_baldrame if self.aba_atual == "baldrame" else self.lbl_resultado
-            lbl.text = txt("msg_inicial")
+    def finalizar_e_ir_resumo(self, instance=None):
+        """Soma todas as abas preenchidas (aba em branco é ignorada) e abre o Resumo."""
+        self._capturar_estado()
+        itens = []
+        for aba in ABAS_ORDEM:
+            estado = self.estado_abas.get(aba)
+            if not estado or not self._aba_iniciada(aba, estado):
+                continue
+            r = self._calcular_aba(aba, estado)
+            if "erro" in r:
+                if aba != self.aba_atual:
+                    self.trocar_aba(aba)
+                self._lbl_resultado.text = r["erro"]
+                return
+            self.textos_resultado[aba] = r["texto"]
+            itens.append(r["resultado"])
+
+        if not itens:
+            self._lbl_resultado.text = txt("msg_inicial")
+            return
+
+        ORCAMENTO_FINAL.clear()
+        ORCAMENTO_FINAL.extend(itens)
+        summary_screen = self.manager.get_screen("summary")
+        summary_screen.atualizar_resumo()
+        self.manager.current = "summary"
 
 
 # --- TELA DE RESUMO CONSOLIDADO ---
@@ -1034,6 +1404,7 @@ class SummaryScreen(MDScreen):
             total_pedra = sum(item.get("pedra", 0) for item in ORCAMENTO_FINAL)
             total_aco = sum(item.get("aco_kg", 0) for item in ORCAMENTO_FINAL)
             total_barras = sum(item.get("barras_12m", 0) for item in ORCAMENTO_FINAL)
+            total_imperm = sum(item.get("imperm_litros", 0) for item in ORCAMENTO_FINAL)
             
             subtotal_materiais = sum(item.get("custo_mat", 0) for item in ORCAMENTO_FINAL)
             subtotal_mo = sum(item.get("custo_mo", 0) for item in ORCAMENTO_FINAL)
@@ -1053,9 +1424,13 @@ class SummaryScreen(MDScreen):
             texto += "----------------------------------------\n"
             texto += f"• Cimento 50kg: {total_cimento} sacos\n"
             texto += f"• Areia: {fmt_num(total_areia, 2)} m³\n"
-            texto += f"• Brita/Pedra: {fmt_num(total_pedra, 2)} m³\n"
+            texto += f"• Brita: {fmt_num(total_pedra, 2)} m³\n"
             if total_aco > 0:
                 texto += f"• Aço: {fmt_num(total_aco, 1)} kg ({total_barras} barras de 12m)\n"
+            if total_imperm > 0:
+                latas = math.ceil(total_imperm / LITROS_POR_LATA)
+                un_lata = txt('un_lata') if latas == 1 else txt('un_latas')
+                texto += f"• {txt('label_imperm_item')}: {fmt_num(total_imperm, 1)} L ({latas} {un_lata})\n"
                 
             texto += "\n----------------------------------------\n"
             texto += "RESUMO FINANCEIRO FINAL:\n"
@@ -1166,24 +1541,24 @@ class HistoryScreen(MDScreen):
             
             self.box_cards.add_widget(card)
 
-    def visualizar_orcamento(self, item):
+    def _abrir_no_calculo(self, item, modo_leitura):
         dados = item["dados_json"]
-        if dados and len(dados) > 0:
-            inputs = dados[0].get("inputs", {})
-            calc_screen = self.manager.get_screen("calculator")
-            calc_screen.origem = "history"
-            calc_screen.preencher_campos(inputs, modo_leitura=True, tipo=dados[0].get("tipo", "brocas"))
+        if not dados:
+            return
+        calc_screen = self.manager.get_screen("calculator")
+        calc_screen.reiniciar(montar=False)
+        calc_screen.origem = "history"
+        # carrega do último para o primeiro: assim a primeira aba é a que fica aberta
+        for etapa in reversed(dados):
+            calc_screen.preencher_campos(etapa.get("inputs", {}), modo_leitura=modo_leitura, tipo=etapa.get("tipo", "brocas"))
             calc_screen.executar_calculo(None)
-            self.manager.current = "calculator"
+        self.manager.current = "calculator"
+
+    def visualizar_orcamento(self, item):
+        self._abrir_no_calculo(item, modo_leitura=True)
 
     def editar_orcamento(self, item):
-        dados = item["dados_json"]
-        if dados and len(dados) > 0:
-            inputs = dados[0].get("inputs", {})
-            calc_screen = self.manager.get_screen("calculator")
-            calc_screen.origem = "history"
-            calc_screen.preencher_campos(inputs, modo_leitura=False, tipo=dados[0].get("tipo", "brocas"))
-            self.manager.current = "calculator"
+        self._abrir_no_calculo(item, modo_leitura=False)
 
     def duplicar_popup(self, item):
         input_dup = MDTextField(MDTextFieldHintText(text=txt("hint_nome_obra")), mode="outlined")

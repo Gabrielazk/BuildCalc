@@ -30,6 +30,7 @@
     <Compile Include="src\calculators\paredes.py" />
     <Compile Include="src\calculators\reboco.py" />
     <Compile Include="src\calculators\revestimento.py" />
+    <Compile Include="src\calculators\tracos.py" />
     <Compile Include="src\calculators\__init__.py" />
     <Compile Include="src\models\database.py" />
     <Compile Include="src\models\material.py" />
