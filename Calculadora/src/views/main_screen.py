@@ -24,7 +24,17 @@ from src.calculators.brocas import (
     ESPACAMENTO_ESTRIBO_PADRAO_CM
 )
 from src.calculators.baldrame import calcular_baldrame, PERDA_PADRAO_BALDRAME, LITROS_POR_LATA
-from src.calculators.tracos import TRACOS_CONCRETO, TRACO_CONCRETO_PADRAO
+from src.calculators.contrapiso import calcular_contrapiso, PERDA_PADRAO_CONTRAPISO
+from src.calculators.paredes import (
+    calcular_paredes,
+    TIJOLOS,
+    TIJOLO_PADRAO,
+    ASSENTAMENTOS,
+    ASSENTAMENTO_PADRAO,
+    JUNTA_PADRAO_CM,
+    QUEBRA_PADRAO_PERCENTUAL,
+)
+from src.calculators.tracos import TRACOS_CONCRETO, TRACO_CONCRETO_PADRAO, TRACOS_MASSA, TRACO_MASSA_PADRAO
 from src.models.material import TabelaPrecos
 from src.models.database import (
     salvar_orcamento,
@@ -64,6 +74,8 @@ TEXTOS = {
         "titulo_calculadora": "Calculadora de Materiais",
         "aba_brocas": "Brocas",
         "aba_baldrame": "Baldrame",
+        "aba_paredes": "Paredes",
+        "aba_contrapiso": "Contrapiso",
         "secao_dimensoes": "Dimensões (Obrigatório)",
         "label_traco": "Traço do concreto (cimento:areia:brita) (Opcional)",
         "label_traco_curto": "Traço",
@@ -157,7 +169,37 @@ TEXTOS = {
         "opcao_sim": "Sim",
         "opcao_nao": "Não",
         "un_latas": "latas de 18 L",
-        "un_lata": "lata de 18 L"
+        "un_lata": "lata de 18 L",
+        "secao_paredes": "Paredes",
+        "secao_contrapiso": "Contrapiso",
+        "ajuda_contrapiso": "Informe a área dos cômodos e a espessura média. O app estima o cimento, a areia e a brita do concreto.",
+        "hint_area_contrapiso": "Área do contrapiso em m² (ex: 40)",
+        "hint_esp_contrapiso": "Espessura média em cm (ex: 5)",
+        "label_area_contrapiso": "Área do contrapiso",
+        "ajuda_paredes": "Informe a área total das paredes, sem descontar nada, o tipo de tijolo e se ele será assentado em pé ou deitado. Portas e janelas têm um campo próprio para desconto.",
+        "hint_area_parede": "Área bruta das paredes em m² (ex: 30)",
+        "hint_vaos": "Portas e janelas em m² (opcional, ex: 5)",
+        "hint_junta": "Espessura da junta em cm (opcional, ex: 1)",
+        "hint_quebra": "Quebra de tijolos % (opcional, ex: 5)",
+        "label_tijolo": "Tipo e tamanho do tijolo ou bloco",
+        "label_assent": "Assentamento",
+        "label_traco_massa": "Traço da massa (cimento:cal:areia) (Opcional)",
+        "opcao_em_pe": "Em pé",
+        "opcao_deitado": "Deitado",
+        "tj_baiano": "Tijolo baiano (9x19x19)",
+        "tj_baiano_9f": "Tijolo baiano 9 furos (9x14x19)",
+        "tj_bloco_9": "Bloco de concreto (9x19x39)",
+        "tj_bloco_14": "Bloco de concreto (14x19x39)",
+        "tj_bloco_19": "Bloco de concreto (19x19x39)",
+        "label_cal": "Cal",
+        "un_sacos_cal": "sacos de 20 kg",
+        "un_unidades": "un",
+        "un_milheiro": "milheiro",
+        "un_milheiros": "milheiros",
+        "label_area_bruta": "Área bruta",
+        "label_vaos": "Vãos (portas e janelas)",
+        "label_area_liquida": "Área líquida",
+        "label_tijolos_resumo": "Tijolos/Blocos"
     },
     "en": {
         "titulo_app": "BuildCalc Pro",
@@ -174,6 +216,8 @@ TEXTOS = {
         "titulo_calculadora": "Materials Calculator",
         "aba_brocas": "Drilled Shafts",
         "aba_baldrame": "Grade Beam",
+        "aba_paredes": "Walls",
+        "aba_contrapiso": "Subfloor",
         "secao_dimensoes": "Dimensions (Required)",
         "label_traco": "Concrete mix (cement:sand:gravel) (Optional)",
         "label_traco_curto": "Mix",
@@ -267,7 +311,37 @@ TEXTOS = {
         "opcao_sim": "Yes",
         "opcao_nao": "No",
         "un_latas": "18 L cans",
-        "un_lata": "18 L can"
+        "un_lata": "18 L can",
+        "secao_paredes": "Walls",
+        "secao_contrapiso": "Subfloor",
+        "ajuda_contrapiso": "Enter the room area and the average thickness. The app estimates the cement, sand and gravel for the concrete.",
+        "hint_area_contrapiso": "Subfloor area in m² (ex: 40)",
+        "hint_esp_contrapiso": "Average thickness in cm (ex: 5)",
+        "label_area_contrapiso": "Subfloor area",
+        "ajuda_paredes": "Enter the total wall area without any deductions, the brick type and whether it is laid upright or flat. Doors and windows have their own deduction field.",
+        "hint_area_parede": "Gross wall area in m² (ex: 30)",
+        "hint_vaos": "Doors and windows m² (optional, ex: 5)",
+        "hint_junta": "Joint thickness in cm (optional, ex: 1)",
+        "hint_quebra": "Brick breakage % (optional, ex: 5)",
+        "label_tijolo": "Brick or block type and size",
+        "label_assent": "Laying",
+        "label_traco_massa": "Mortar mix (cement:lime:sand) (Optional)",
+        "opcao_em_pe": "Upright",
+        "opcao_deitado": "Flat",
+        "tj_baiano": "Clay brick (9x19x19)",
+        "tj_baiano_9f": "Clay brick 9 holes (9x14x19)",
+        "tj_bloco_9": "Concrete block (9x19x39)",
+        "tj_bloco_14": "Concrete block (14x19x39)",
+        "tj_bloco_19": "Concrete block (19x19x39)",
+        "label_cal": "Lime",
+        "un_sacos_cal": "bags of 20 kg",
+        "un_unidades": "un",
+        "un_milheiro": "thousand",
+        "un_milheiros": "thousand",
+        "label_area_bruta": "Gross area",
+        "label_vaos": "Openings (doors and windows)",
+        "label_area_liquida": "Net area",
+        "label_tijolos_resumo": "Bricks/Blocks"
     }
 }
 
@@ -637,17 +711,21 @@ class HomeScreen(MDScreen):
 
 # --- TELA DE CÁLCULO COM ABAS (Navegação Interna) ---
 # Ordem das abas no fluxo (botão Próximo). Aba nova entra aqui.
-ABAS_ORDEM = ["brocas", "baldrame"]
+ABAS_ORDEM = ["brocas", "baldrame", "paredes", "contrapiso"]
 
 # Campos de texto que cada aba guarda (chave usada no estado e no Histórico)
 CAMPOS_ABA = {
     "brocas": ["qtd", "prof", "diam", "perda", "barras", "esp_estribo", "mo"],
     "baldrame": ["comp", "larg", "alt", "perda", "mo", "barras", "esp_estribo"],
+    "paredes": ["area", "vaos", "junta", "quebra"],
+    "contrapiso": ["area", "esp", "perda"],
 }
 # Se algum destes tiver texto, a aba conta como preenchida (aba em branco é ignorada)
 CAMPOS_INICIAIS = {
     "brocas": ["qtd", "prof", "diam", "barras", "mo"],
     "baldrame": ["comp", "larg", "alt", "barras", "mo"],
+    "paredes": ["area", "vaos"],
+    "contrapiso": ["area", "esp"],
 }
 
 
@@ -669,13 +747,17 @@ class CalculatorScreen(MDScreen):
         self.modo_somente_leitura = False
         self.estado_abas = {}        # texto digitado em cada aba
         self.textos_resultado = {}   # último resultado mostrado em cada aba
-        self.traco = {"brocas": TRACO_CONCRETO_PADRAO, "baldrame": TRACO_CONCRETO_PADRAO}
+        self.traco = {"brocas": TRACO_CONCRETO_PADRAO, "baldrame": TRACO_CONCRETO_PADRAO, "paredes": TRACO_MASSA_PADRAO, "contrapiso": TRACO_CONCRETO_PADRAO}
+        self.tijolo = {"paredes": TIJOLO_PADRAO}
+        self.assent = {"paredes": ASSENTAMENTO_PADRAO}
         self.bitola = {"brocas": BITOLA_PADRAO, "baldrame": BITOLA_PADRAO}
         self.imperm = {"baldrame": False}
         self._campos = {}            # campos da aba aberta no momento
         self._botoes_traco = {}
         self._botoes_bitola = {}
         self._botoes_imperm = {}
+        self._botoes_tijolo = {}
+        self._botoes_assent = {}
         self._lbl_resultado = None
         self.menu_ativo = None
         self.dialog_ajuda = None
@@ -703,20 +785,20 @@ class CalculatorScreen(MDScreen):
         # --- ABAS + AJUDA "?" ---
         box_tabs = MDBoxLayout(size_hint_y=None, height="48dp", spacing="8dp")
 
-        self.btn_tab_brocas = MDButton(
-            MDButtonText(text=txt("aba_brocas")),
-            style="outlined",
-            on_release=lambda x: self.trocar_aba("brocas")
-        )
-        self.btn_tab_baldrame = MDButton(
-            MDButtonText(text=txt("aba_baldrame")),
-            style="outlined",
-            on_release=lambda x: self.trocar_aba("baldrame")
-        )
-
-        box_tabs.add_widget(self.btn_tab_brocas)
-        box_tabs.add_widget(self.btn_tab_baldrame)
-        box_tabs.add_widget(MDWidget())
+        # As abas ficam numa faixa que rola para o lado (cabem muitas abas em telas pequenas)
+        faixa = MDBoxLayout(size_hint_x=None, spacing="8dp")
+        faixa.bind(minimum_width=faixa.setter("width"))
+        for aba in ABAS_ORDEM:
+            botao = MDButton(
+                MDButtonText(text=txt(f"aba_{aba}")),
+                style="outlined",
+                on_release=lambda x, a=aba: self.trocar_aba(a)
+            )
+            setattr(self, f"btn_tab_{aba}", botao)
+            faixa.add_widget(botao)
+        rolagem_abas = MDScrollView(do_scroll_x=True, do_scroll_y=False, bar_width=0)
+        rolagem_abas.add_widget(faixa)
+        box_tabs.add_widget(rolagem_abas)
         self.btn_ajuda = MDIconButton(
             icon="help-circle-outline",
             pos_hint={"center_y": 0.5},
@@ -762,6 +844,10 @@ class CalculatorScreen(MDScreen):
             self.container_conteudo.add_widget(self.montar_conteudo_brocas())
         elif aba_nome == "baldrame":
             self.container_conteudo.add_widget(self.montar_conteudo_baldrame())
+        elif aba_nome == "paredes":
+            self.container_conteudo.add_widget(self.montar_conteudo_paredes())
+        elif aba_nome == "contrapiso":
+            self.container_conteudo.add_widget(self.montar_conteudo_contrapiso())
 
         self._restaurar_estado()
 
@@ -901,6 +987,106 @@ class CalculatorScreen(MDScreen):
         return scroll
 
     # ==========================================
+    # CONTEÚDO DA ABA 3: PAREDES
+    # ==========================================
+    def montar_conteudo_paredes(self):
+        scroll = MDScrollView()
+        box_form = MDBoxLayout(orientation="vertical", spacing="16dp", padding="8dp", size_hint_y=None)
+        box_form.bind(minimum_height=box_form.setter('height'))
+        ro = self.modo_somente_leitura
+
+        # --- Obrigatórios ---
+        self.lbl_obrigatorio_par = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_par_area = MDTextField(MDTextFieldHintText(text=txt("hint_area_parede")), mode="outlined", write_tab=False, readonly=ro)
+        box_form.add_widget(self.lbl_obrigatorio_par)
+        box_form.add_widget(self.in_par_area)
+        self._montar_seletor_tijolo(box_form, "paredes")
+        self._montar_seletor_assent(box_form, "paredes")
+
+        # --- Opcionais (já vêm preenchidos com valores padrão; os rótulos dizem "opcional") ---
+        self.in_par_vaos = MDTextField(MDTextFieldHintText(text=txt("hint_vaos")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_par_junta = MDTextField(
+            MDTextFieldHintText(text=txt("hint_junta")),
+            text=self._texto_campo(JUNTA_PADRAO_CM), mode="outlined", write_tab=False, readonly=ro
+        )
+        self.in_par_quebra = MDTextField(
+            MDTextFieldHintText(text=txt("hint_quebra")),
+            text=self._texto_campo(QUEBRA_PADRAO_PERCENTUAL), mode="outlined", write_tab=False, readonly=ro
+        )
+        box_form.add_widget(self.in_par_vaos)
+        box_form.add_widget(self.in_par_junta)
+        box_form.add_widget(self.in_par_quebra)
+        self._montar_seletor_traco(box_form, "paredes")
+
+        self._campos = {
+            "area": self.in_par_area, "vaos": self.in_par_vaos,
+            "junta": self.in_par_junta, "quebra": self.in_par_quebra,
+        }
+
+        if not ro:
+            self.btn_calc_par = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo)
+            box_form.add_widget(self.btn_calc_par)
+
+        box_res = MDBoxLayout(orientation="vertical", spacing="12dp", padding=("0dp", "16dp", "0dp", "0dp"), size_hint_y=None)
+        box_res.bind(minimum_height=box_res.setter('height'))
+
+        self.lbl_res_paredes = MDLabel(text=txt("msg_inicial"), theme_text_color="Secondary", size_hint_y=None)
+        self.lbl_res_paredes.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
+        self._lbl_resultado = self.lbl_res_paredes
+        box_res.add_widget(self.lbl_res_paredes)
+
+        self._montar_botoes_fluxo(box_res)
+
+        box_form.add_widget(box_res)
+        scroll.add_widget(box_form)
+        return scroll
+
+    # ==========================================
+    # CONTEÚDO DA ABA 4: CONTRAPISO
+    # ==========================================
+    def montar_conteudo_contrapiso(self):
+        scroll = MDScrollView()
+        box_form = MDBoxLayout(orientation="vertical", spacing="16dp", padding="8dp", size_hint_y=None)
+        box_form.bind(minimum_height=box_form.setter('height'))
+        ro = self.modo_somente_leitura
+
+        # --- Obrigatórios ---
+        self.lbl_obrigatorio_con = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_con_area = MDTextField(MDTextFieldHintText(text=txt("hint_area_contrapiso")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_con_esp = MDTextField(MDTextFieldHintText(text=txt("hint_esp_contrapiso")), mode="outlined", write_tab=False, readonly=ro)
+        box_form.add_widget(self.lbl_obrigatorio_con)
+        box_form.add_widget(self.in_con_area)
+        box_form.add_widget(self.in_con_esp)
+
+        # --- Opcionais (já vêm preenchidos com valores padrão; os rótulos dizem "opcional") ---
+        self._montar_seletor_traco(box_form, "contrapiso")
+        self.in_con_perda = MDTextField(
+            MDTextFieldHintText(text=txt("hint_perda_bal")),
+            text=self._texto_campo(PERDA_PADRAO_CONTRAPISO), mode="outlined", write_tab=False, readonly=ro
+        )
+        box_form.add_widget(self.in_con_perda)
+
+        self._campos = {"area": self.in_con_area, "esp": self.in_con_esp, "perda": self.in_con_perda}
+
+        if not ro:
+            self.btn_calc_con = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo)
+            box_form.add_widget(self.btn_calc_con)
+
+        box_res = MDBoxLayout(orientation="vertical", spacing="12dp", padding=("0dp", "16dp", "0dp", "0dp"), size_hint_y=None)
+        box_res.bind(minimum_height=box_res.setter('height'))
+
+        self.lbl_res_contrapiso = MDLabel(text=txt("msg_inicial"), theme_text_color="Secondary", size_hint_y=None)
+        self.lbl_res_contrapiso.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
+        self._lbl_resultado = self.lbl_res_contrapiso
+        box_res.add_widget(self.lbl_res_contrapiso)
+
+        self._montar_botoes_fluxo(box_res)
+
+        box_form.add_widget(box_res)
+        scroll.add_widget(box_form)
+        return scroll
+
+    # ==========================================
     # BOTÕES DO FLUXO: Limpar, Anterior (menos na 1ª aba), Próximo (menos na última) e Finalizar
     # (somem no modo leitura)
     # ==========================================
@@ -945,7 +1131,11 @@ class CalculatorScreen(MDScreen):
         aba = self.aba_atual
         self.estado_abas.pop(aba, None)
         self.textos_resultado.pop(aba, None)
-        self.traco[aba] = TRACO_CONCRETO_PADRAO
+        self.traco[aba] = self._tabela_traco(aba)[1]
+        if aba in self.tijolo:
+            self.tijolo[aba] = TIJOLO_PADRAO
+        if aba in self.assent:
+            self.assent[aba] = ASSENTAMENTO_PADRAO
         if aba in self.bitola:
             self.bitola[aba] = BITOLA_PADRAO
         if aba in self.imperm:
@@ -964,7 +1154,7 @@ class CalculatorScreen(MDScreen):
             return f"{int(bitola)} mm"
         return f"{fmt_num(bitola, 1)} mm"
 
-    def _montar_dropdown(self, box_form, titulo, opcoes, atual, ao_escolher, rotulo=str):
+    def _montar_dropdown(self, box_form, titulo, opcoes, atual, ao_escolher, rotulo=str, largura=200):
         """Título + botão que abre a lista de opções. Retorna o texto do botão (mostra a opção atual)."""
         box_form.add_widget(MDLabel(text=titulo, font_style="Title", role="small", bold=True, theme_text_color="Primary"))
         texto = MDButtonText(text=rotulo(atual))
@@ -974,19 +1164,21 @@ class CalculatorScreen(MDScreen):
             style="outlined",
             size_hint_x=1,
             disabled=self.modo_somente_leitura,
-            on_release=lambda x: self._abrir_menu(x, opcoes, ao_escolher, rotulo)
+            on_release=lambda x: self._abrir_menu(x, opcoes, ao_escolher, rotulo, largura)
         )
         box_form.add_widget(botao)
         return texto
 
-    def _abrir_menu(self, caller, opcoes, ao_escolher, rotulo):
+    def _abrir_menu(self, caller, opcoes, ao_escolher, rotulo, largura=200):
         if self.menu_ativo:
             self.menu_ativo.dismiss()
+        # largura=None: o menu fica da largura do botão (não passa da tela)
+        largura_menu = dp(largura) if largura else getattr(caller, "width", dp(300))
         itens = [
             {"text": rotulo(opcao), "on_release": lambda *args, o=opcao: self._escolher_no_menu(ao_escolher, o)}
             for opcao in opcoes
         ]
-        self.menu_ativo = MDDropdownMenu(caller=caller, items=itens, width=dp(200), position="bottom")
+        self.menu_ativo = MDDropdownMenu(caller=caller, items=itens, width=largura_menu, position="bottom")
         self.menu_ativo.open()
 
     def _escolher_no_menu(self, ao_escolher, opcao):
@@ -995,9 +1187,17 @@ class CalculatorScreen(MDScreen):
             self.menu_ativo.dismiss()
 
     # --- Traço do concreto (Brocas e Baldrame) ---
+    @staticmethod
+    def _tabela_traco(aba):
+        """Concreto (Brocas, Baldrame) ou massa (Paredes): tabela de traços, traço padrão e título do campo."""
+        if aba == "paredes":
+            return TRACOS_MASSA, TRACO_MASSA_PADRAO, "label_traco_massa"
+        return TRACOS_CONCRETO, TRACO_CONCRETO_PADRAO, "label_traco"
+
     def _montar_seletor_traco(self, box_form, aba):
+        tabela, _, titulo = self._tabela_traco(aba)
         self._botoes_traco[aba] = self._montar_dropdown(
-            box_form, txt("label_traco"), list(TRACOS_CONCRETO.keys()), self.traco[aba],
+            box_form, txt(titulo), list(tabela.keys()), self.traco[aba],
             lambda nome: self._escolher_traco(aba, nome)
         )
 
@@ -1017,6 +1217,37 @@ class CalculatorScreen(MDScreen):
         self.bitola[aba] = bitola
         if aba in self._botoes_bitola:
             self._botoes_bitola[aba].text = self._rotulo_bitola(bitola)
+
+    # --- Tijolo / bloco e assentamento (Paredes) ---
+    @staticmethod
+    def _rotulo_tijolo(chave):
+        return txt(f"tj_{chave}")
+
+    def _montar_seletor_tijolo(self, box_form, aba):
+        self._botoes_tijolo[aba] = self._montar_dropdown(
+            box_form, txt("label_tijolo"), list(TIJOLOS.keys()), self.tijolo[aba],
+            lambda t: self._escolher_tijolo(aba, t), rotulo=self._rotulo_tijolo, largura=None
+        )
+
+    def _escolher_tijolo(self, aba, chave):
+        self.tijolo[aba] = chave
+        if aba in self._botoes_tijolo:
+            self._botoes_tijolo[aba].text = self._rotulo_tijolo(chave)
+
+    @staticmethod
+    def _rotulo_assent(chave):
+        return txt(f"opcao_{chave}")
+
+    def _montar_seletor_assent(self, box_form, aba):
+        self._botoes_assent[aba] = self._montar_dropdown(
+            box_form, txt("label_assent"), ASSENTAMENTOS, self.assent[aba],
+            lambda a: self._escolher_assent(aba, a), rotulo=self._rotulo_assent
+        )
+
+    def _escolher_assent(self, aba, chave):
+        self.assent[aba] = chave
+        if aba in self._botoes_assent:
+            self._botoes_assent[aba].text = self._rotulo_assent(chave)
 
     # --- Impermeabilização (Sim / Não) ---
     @staticmethod
@@ -1064,6 +1295,10 @@ class CalculatorScreen(MDScreen):
         try:
             if aba == "baldrame":
                 return self._calcular_baldrame(e)
+            if aba == "paredes":
+                return self._calcular_paredes(e)
+            if aba == "contrapiso":
+                return self._calcular_contrapiso(e)
             return self._calcular_brocas(e)
         except ValueError:
             return {"erro": txt("msg_erro_num")}
@@ -1214,6 +1449,98 @@ class CalculatorScreen(MDScreen):
         }
         return {"texto": texto_res, "resultado": resultado}
 
+    def _calcular_contrapiso(self, e):
+        if not (e.get("area") or "").strip() or not (e.get("esp") or "").strip():
+            return {"erro": txt("msg_erro_num")}
+
+        area = self._numero(e["area"])
+        esp = self._numero(e["esp"])
+        perda = self._numero(e.get("perda"), PERDA_PADRAO_CONTRAPISO)
+
+        res = calcular_contrapiso(area_m2=area, espessura_cm=esp, perda_percentual=perda, traco=self.traco["contrapiso"])
+        if "erro" in res:
+            return {"erro": f"Erro: {res['erro']}"}
+
+        custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
+        custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
+        custo_pedra = res['pedra_m3'] * TABELA_PRECOS_GLOBAL.pedra_m3
+        custo_mat = custo_cimento + custo_areia + custo_pedra
+
+        texto_res = (
+            f"{txt('label_area_contrapiso')}: {fmt_num(res['area_m2'], 2)} m²\n"
+            f"{txt('label_traco_curto')}: {res['traco']}\n"
+            f"{txt('label_volume')} ({fmt_num(perda, 0)}% perda): {fmt_num(res['volume_com_perda_m3'], 3)} m³\n"
+            f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
+            f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
+            f"• {txt('label_pedra')}: {fmt_num(res['pedra_m3'], 2)} m³ ({fmt_moeda(custo_pedra)})\n"
+            f"\n{txt('label_custo')}: {fmt_moeda(custo_mat)}"
+        )
+
+        resultado = {
+            "etapa": txt("secao_contrapiso"),
+            "tipo": "contrapiso",
+            "cimento": res['sacos_cimento'], "areia": res['areia_m3'], "pedra": res['pedra_m3'],
+            "custo_mat": custo_mat, "custo_mo": 0.0, "custo_total": custo_mat,
+            "resumo_texto": texto_res,
+            "inputs": {"area": area, "esp": esp, "perda": perda, "traco": res["traco"]}
+        }
+        return {"texto": texto_res, "resultado": resultado}
+
+    def _calcular_paredes(self, e):
+        if not (e.get("area") or "").strip():
+            return {"erro": txt("msg_erro_num")}
+
+        area = self._numero(e["area"])
+        vaos = self._numero(e.get("vaos"), 0.0)
+        junta = self._numero(e.get("junta"), JUNTA_PADRAO_CM)
+        quebra = self._numero(e.get("quebra"), QUEBRA_PADRAO_PERCENTUAL)
+        tijolo = self.tijolo["paredes"]
+        assent = self.assent["paredes"]
+
+        res = calcular_paredes(
+            area_bruta_m2=area, tijolo=tijolo, assentamento=assent,
+            desconto_vaos_m2=vaos, junta_cm=junta, quebra_percentual=quebra,
+            traco=self.traco["paredes"]
+        )
+        if "erro" in res:
+            return {"erro": f"Erro: {res['erro']}"}
+
+        custo_tijolo = res['unidades'] * res['preco_unitario']
+        custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
+        custo_cal = res['sacos_cal'] * TABELA_PRECOS_GLOBAL.cal_20kg
+        custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
+        custo_mat = custo_tijolo + custo_cimento + custo_cal + custo_areia
+
+        milheiros = fmt_num(res['milheiros'], 2)
+        un_milheiro = txt('un_milheiro') if res['milheiros'] == 1 else txt('un_milheiros')
+        texto_res = f"{txt('label_area_bruta')}: {fmt_num(res['area_bruta_m2'], 2)} m²\n"
+        if res['desconto_vaos_m2'] > 0:
+            texto_res += f"{txt('label_vaos')}: {fmt_num(res['desconto_vaos_m2'], 2)} m²\n"
+        texto_res += (
+            f"{txt('label_area_liquida')}: {fmt_num(res['area_liquida_m2'], 2)} m²\n"
+            f"{txt('label_traco_curto')}: {res['traco']}\n"
+            f"• {self._rotulo_tijolo(tijolo)}: {res['unidades']} {txt('un_unidades')} "
+            f"({milheiros} {un_milheiro}) ({fmt_moeda(custo_tijolo)})\n"
+            f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
+            f"• {txt('label_cal')}: {res['sacos_cal']} {txt('un_sacos_cal')} ({fmt_moeda(custo_cal)})\n"
+            f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
+            f"\n{txt('label_custo')}: {fmt_moeda(custo_mat)}"
+        )
+
+        resultado = {
+            "etapa": txt("secao_paredes"),
+            "tipo": "paredes",
+            "cimento": res['sacos_cimento'], "cal": res['sacos_cal'], "areia": res['areia_m3'],
+            "tijolos": res['unidades'],
+            "custo_mat": custo_mat, "custo_mo": 0.0, "custo_total": custo_mat,
+            "resumo_texto": texto_res,
+            "inputs": {
+                "area": area, "vaos": vaos, "junta": junta, "quebra": quebra,
+                "tijolo": tijolo, "assent": assent, "traco": res["traco"]
+            }
+        }
+        return {"texto": texto_res, "resultado": resultado}
+
     def executar_calculo(self, instance=None):
         """Botão Calcular: calcula a aba aberta e mostra o resultado."""
         self._capturar_estado()
@@ -1239,8 +1566,13 @@ class CalculatorScreen(MDScreen):
         self.modo_somente_leitura = modo_leitura
         self.aba_atual = aba
 
+        tabela_tracos, traco_padrao, _ = self._tabela_traco(aba)
         traco = inputs_dict.get("traco")
-        self.traco[aba] = traco if traco in TRACOS_CONCRETO else TRACO_CONCRETO_PADRAO
+        self.traco[aba] = traco if traco in tabela_tracos else traco_padrao
+        if aba in self.tijolo:
+            self.tijolo[aba] = inputs_dict.get("tijolo") if inputs_dict.get("tijolo") in TIJOLOS else TIJOLO_PADRAO
+        if aba in self.assent:
+            self.assent[aba] = inputs_dict.get("assent") if inputs_dict.get("assent") in ASSENTAMENTOS else ASSENTAMENTO_PADRAO
         if aba in self.bitola:
             bitola = inputs_dict.get("bitola")
             self.bitola[aba] = bitola if bitola in BITOLAS_LONGITUDINAL else BITOLA_PADRAO
@@ -1405,6 +1737,8 @@ class SummaryScreen(MDScreen):
             total_aco = sum(item.get("aco_kg", 0) for item in ORCAMENTO_FINAL)
             total_barras = sum(item.get("barras_12m", 0) for item in ORCAMENTO_FINAL)
             total_imperm = sum(item.get("imperm_litros", 0) for item in ORCAMENTO_FINAL)
+            total_cal = sum(item.get("cal", 0) for item in ORCAMENTO_FINAL)
+            total_tijolos = sum(item.get("tijolos", 0) for item in ORCAMENTO_FINAL)
             
             subtotal_materiais = sum(item.get("custo_mat", 0) for item in ORCAMENTO_FINAL)
             subtotal_mo = sum(item.get("custo_mo", 0) for item in ORCAMENTO_FINAL)
@@ -1422,9 +1756,14 @@ class SummaryScreen(MDScreen):
             texto += "\n----------------------------------------\n"
             texto += "LISTA DE COMPRAS CONSOLIDADA (TOTAL):\n"
             texto += "----------------------------------------\n"
+            if total_tijolos > 0:
+                texto += f"• {txt('label_tijolos_resumo')}: {total_tijolos} {txt('un_unidades')}\n"
             texto += f"• Cimento 50kg: {total_cimento} sacos\n"
+            if total_cal > 0:
+                texto += f"• Cal 20kg: {total_cal} sacos\n"
             texto += f"• Areia: {fmt_num(total_areia, 2)} m³\n"
-            texto += f"• Brita: {fmt_num(total_pedra, 2)} m³\n"
+            if total_pedra > 0:
+                texto += f"• Brita: {fmt_num(total_pedra, 2)} m³\n"
             if total_aco > 0:
                 texto += f"• Aço: {fmt_num(total_aco, 1)} kg ({total_barras} barras de 12m)\n"
             if total_imperm > 0:

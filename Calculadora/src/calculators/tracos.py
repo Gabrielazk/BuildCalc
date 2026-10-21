@@ -21,12 +21,13 @@ TRACO_CONCRETO_PADRAO = "1:2:3"
 # --- MASSA (assentamento / reboco): cimento : cal : areia -----------------
 # Usada nas abas de Paredes, Reboco e Contrapiso (valores do app antigo).
 TRACOS_MASSA = {
+    "1:2:8":   {"cimento": 1.0, "cal": 2.0, "areia": 8.0},
     "1:0.5:6": {"cimento": 1.0, "cal": 0.5, "areia": 6.0},
     "1.5:1:8": {"cimento": 1.5, "cal": 1.0, "areia": 8.0},
     "1:0:3":   {"cimento": 1.0, "cal": 0.0, "areia": 3.0},
     "1.5:0:4": {"cimento": 1.5, "cal": 0.0, "areia": 4.0},
 }
-TRACO_MASSA_PADRAO = "1:0.5:6"
+TRACO_MASSA_PADRAO = "1:2:8"
 
 # --- Constantes de conversão (premissas) ----------------------------------
 DENSIDADE_CIMENTO = 1500.0   # kg/m3 (aparente)
