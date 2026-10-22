@@ -58,3 +58,20 @@ def consumo_concreto_por_m3(traco: str):
         "areia_m3": vol_areia,
         "pedra_m3": vol_pedra,
     }
+
+
+def materiais_da_massa(volume_m3: float, traco: str):
+    """Cimento (kg), cal (kg) e areia (m3) para um volume de massa no traço informado.
+
+    Mesma conta usada no app antigo: as partes do traço dividem o volume da massa.
+    Retorna None se o traço não existir.
+    """
+    partes = TRACOS_MASSA.get(traco)
+    if partes is None:
+        return None
+    total = partes["cimento"] + partes["cal"] + partes["areia"]
+    return {
+        "cimento_kg": volume_m3 * partes["cimento"] / total * DENSIDADE_CIMENTO,
+        "cal_kg": volume_m3 * partes["cal"] / total * DENSIDADE_CAL,
+        "areia_m3": volume_m3 * partes["areia"] / total,
+    }

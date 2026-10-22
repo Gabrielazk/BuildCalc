@@ -24,6 +24,13 @@ from src.calculators.brocas import (
     ESPACAMENTO_ESTRIBO_PADRAO_CM
 )
 from src.calculators.baldrame import calcular_baldrame, PERDA_PADRAO_BALDRAME, LITROS_POR_LATA
+from src.calculators.reboco import (
+    calcular_reboco,
+    ESPESSURA_PADRAO_CM as ESPESSURA_REBOCO_PADRAO_CM,
+    PERDA_PADRAO_REBOCO,
+    CHAPISCO_TRACO_RODAPE,
+    CHAPISCO_ESPESSURA_CM,
+)
 from src.calculators.contrapiso import calcular_contrapiso, PERDA_PADRAO_CONTRAPISO
 from src.calculators.paredes import (
     calcular_paredes,
@@ -76,6 +83,7 @@ TEXTOS = {
         "aba_baldrame": "Baldrame",
         "aba_paredes": "Paredes",
         "aba_contrapiso": "Contrapiso",
+        "aba_reboco": "Reboco",
         "secao_dimensoes": "Dimensões (Obrigatório)",
         "label_traco": "Traço do concreto (cimento:areia:brita) (Opcional)",
         "label_traco_curto": "Traço",
@@ -172,6 +180,18 @@ TEXTOS = {
         "un_lata": "lata de 18 L",
         "secao_paredes": "Paredes",
         "secao_contrapiso": "Contrapiso",
+        "secao_reboco": "Reboco",
+        "ajuda_reboco": "Informe a área a rebocar, a espessura e o traço da massa. Marque se os dois lados da parede serão rebocados e se terá chapisco.",
+        "hint_area_reboco": "Área a rebocar em m² (ex: 30)",
+        "hint_esp_reboco": "Espessura do reboco em cm (ex: 2)",
+        "label_traco_massa_obrig": "Traço da massa (cimento:cal:areia)",
+        "label_dois_lados": "Rebocar os dois lados (Opcional)",
+        "label_chapisco": "Chapisco (Opcional)",
+        "label_area_rebocar": "Área a rebocar",
+        "label_volume_reboco": "Volume do Reboco",
+        "label_chapisco_res": "Chapisco",
+        "txt_chapisco_incluido": "incluído",
+        "txt_dois_lados": "dois lados",
         "ajuda_contrapiso": "Informe a área dos cômodos e a espessura média. O app estima o cimento, a areia e a brita do concreto.",
         "hint_area_contrapiso": "Área do contrapiso em m² (ex: 40)",
         "hint_esp_contrapiso": "Espessura média em cm (ex: 5)",
@@ -218,6 +238,7 @@ TEXTOS = {
         "aba_baldrame": "Grade Beam",
         "aba_paredes": "Walls",
         "aba_contrapiso": "Subfloor",
+        "aba_reboco": "Plaster",
         "secao_dimensoes": "Dimensions (Required)",
         "label_traco": "Concrete mix (cement:sand:gravel) (Optional)",
         "label_traco_curto": "Mix",
@@ -314,6 +335,18 @@ TEXTOS = {
         "un_lata": "18 L can",
         "secao_paredes": "Walls",
         "secao_contrapiso": "Subfloor",
+        "secao_reboco": "Plaster",
+        "ajuda_reboco": "Enter the area to plaster, the thickness and the mortar mix. Check whether both sides of the wall will be plastered and whether a scratch coat is needed.",
+        "hint_area_reboco": "Area to plaster in m² (ex: 30)",
+        "hint_esp_reboco": "Plaster thickness in cm (ex: 2)",
+        "label_traco_massa_obrig": "Mortar mix (cement:lime:sand)",
+        "label_dois_lados": "Plaster both sides (Optional)",
+        "label_chapisco": "Scratch coat (Optional)",
+        "label_area_rebocar": "Area to plaster",
+        "label_volume_reboco": "Plaster Volume",
+        "label_chapisco_res": "Scratch coat",
+        "txt_chapisco_incluido": "included",
+        "txt_dois_lados": "both sides",
         "ajuda_contrapiso": "Enter the room area and the average thickness. The app estimates the cement, sand and gravel for the concrete.",
         "hint_area_contrapiso": "Subfloor area in m² (ex: 40)",
         "hint_esp_contrapiso": "Average thickness in cm (ex: 5)",
@@ -553,11 +586,19 @@ class LoginScreen(MDScreen):
             if not nome:
                 self.lbl_status.text = "Digite o seu nome!"
                 return
+
+            if not "@" in email:
+                self.lbl_status.text="Por favor, insira um e-mail válido!"
+                return
                 
             if senha != conf_senha:
                 self.lbl_status.text = "As senhas não coincidem!"
                 return
-                
+
+            if len(senha) < 6:
+                self.lbl_status.text="A senha deve ter pelo menos 6 caracteres!"
+                return
+
             sucesso = cadastrar_usuario(nome, email, senha)
             if sucesso:
                 self.lbl_status.text = "Conta criada com sucesso! Faça login."
@@ -711,7 +752,7 @@ class HomeScreen(MDScreen):
 
 # --- TELA DE CÁLCULO COM ABAS (Navegação Interna) ---
 # Ordem das abas no fluxo (botão Próximo). Aba nova entra aqui.
-ABAS_ORDEM = ["brocas", "baldrame", "paredes", "contrapiso"]
+ABAS_ORDEM = ["brocas", "baldrame", "paredes", "contrapiso", "reboco"]
 
 # Campos de texto que cada aba guarda (chave usada no estado e no Histórico)
 CAMPOS_ABA = {
@@ -719,6 +760,7 @@ CAMPOS_ABA = {
     "baldrame": ["comp", "larg", "alt", "perda", "mo", "barras", "esp_estribo"],
     "paredes": ["area", "vaos", "junta", "quebra"],
     "contrapiso": ["area", "esp", "perda"],
+    "reboco": ["area", "vaos", "esp", "perda"],
 }
 # Se algum destes tiver texto, a aba conta como preenchida (aba em branco é ignorada)
 CAMPOS_INICIAIS = {
@@ -726,6 +768,7 @@ CAMPOS_INICIAIS = {
     "baldrame": ["comp", "larg", "alt", "barras", "mo"],
     "paredes": ["area", "vaos"],
     "contrapiso": ["area", "esp"],
+    "reboco": ["area", "vaos"],
 }
 
 
@@ -747,15 +790,18 @@ class CalculatorScreen(MDScreen):
         self.modo_somente_leitura = False
         self.estado_abas = {}        # texto digitado em cada aba
         self.textos_resultado = {}   # último resultado mostrado em cada aba
-        self.traco = {"brocas": TRACO_CONCRETO_PADRAO, "baldrame": TRACO_CONCRETO_PADRAO, "paredes": TRACO_MASSA_PADRAO, "contrapiso": TRACO_CONCRETO_PADRAO}
+        self.traco = {"brocas": TRACO_CONCRETO_PADRAO, "baldrame": TRACO_CONCRETO_PADRAO, "paredes": TRACO_MASSA_PADRAO, "contrapiso": TRACO_CONCRETO_PADRAO, "reboco": TRACO_MASSA_PADRAO}
         self.tijolo = {"paredes": TIJOLO_PADRAO}
         self.assent = {"paredes": ASSENTAMENTO_PADRAO}
         self.bitola = {"brocas": BITOLA_PADRAO, "baldrame": BITOLA_PADRAO}
         self.imperm = {"baldrame": False}
+        self.dois_lados = {"reboco": False}
+        self.chapisco = {"reboco": False}
         self._campos = {}            # campos da aba aberta no momento
         self._botoes_traco = {}
         self._botoes_bitola = {}
         self._botoes_imperm = {}
+        self._botoes_sn = {}
         self._botoes_tijolo = {}
         self._botoes_assent = {}
         self._lbl_resultado = None
@@ -848,6 +894,8 @@ class CalculatorScreen(MDScreen):
             self.container_conteudo.add_widget(self.montar_conteudo_paredes())
         elif aba_nome == "contrapiso":
             self.container_conteudo.add_widget(self.montar_conteudo_contrapiso())
+        elif aba_nome == "reboco":
+            self.container_conteudo.add_widget(self.montar_conteudo_reboco())
 
         self._restaurar_estado()
 
@@ -1087,6 +1135,61 @@ class CalculatorScreen(MDScreen):
         return scroll
 
     # ==========================================
+    # CONTEÚDO DA ABA 5: REBOCO
+    # ==========================================
+    def montar_conteudo_reboco(self):
+        scroll = MDScrollView()
+        box_form = MDBoxLayout(orientation="vertical", spacing="16dp", padding="8dp", size_hint_y=None)
+        box_form.bind(minimum_height=box_form.setter('height'))
+        ro = self.modo_somente_leitura
+
+        # --- Obrigatórios (a espessura e o traço já vêm com valor padrão) ---
+        self.lbl_obrigatorio_reb = MDLabel(text=txt("secao_dimensoes"), font_style="Title", role="small", bold=True, theme_text_color="Primary")
+        self.in_reb_area = MDTextField(MDTextFieldHintText(text=txt("hint_area_reboco")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_reb_esp = MDTextField(
+            MDTextFieldHintText(text=txt("hint_esp_reboco")),
+            text=self._texto_campo(ESPESSURA_REBOCO_PADRAO_CM), mode="outlined", write_tab=False, readonly=ro
+        )
+        box_form.add_widget(self.lbl_obrigatorio_reb)
+        box_form.add_widget(self.in_reb_area)
+        box_form.add_widget(self.in_reb_esp)
+        self._montar_seletor_traco(box_form, "reboco")
+
+        # --- Opcionais ---
+        self.in_reb_vaos = MDTextField(MDTextFieldHintText(text=txt("hint_vaos")), mode="outlined", write_tab=False, readonly=ro)
+        self.in_reb_perda = MDTextField(
+            MDTextFieldHintText(text=txt("hint_perda")),
+            text=self._texto_campo(PERDA_PADRAO_REBOCO), mode="outlined", write_tab=False, readonly=ro
+        )
+        box_form.add_widget(self.in_reb_vaos)
+        box_form.add_widget(self.in_reb_perda)
+        self._montar_sim_nao(box_form, txt("label_dois_lados"), self.dois_lados, "reboco", "dois_lados")
+        self._montar_sim_nao(box_form, txt("label_chapisco"), self.chapisco, "reboco", "chapisco")
+
+        self._campos = {
+            "area": self.in_reb_area, "vaos": self.in_reb_vaos,
+            "esp": self.in_reb_esp, "perda": self.in_reb_perda,
+        }
+
+        if not ro:
+            self.btn_calc_reb = MDButton(MDButtonText(text=txt("btn_calcular")), pos_hint={"center_x": 0.5}, on_release=self.executar_calculo)
+            box_form.add_widget(self.btn_calc_reb)
+
+        box_res = MDBoxLayout(orientation="vertical", spacing="12dp", padding=("0dp", "16dp", "0dp", "0dp"), size_hint_y=None)
+        box_res.bind(minimum_height=box_res.setter('height'))
+
+        self.lbl_res_reboco = MDLabel(text=txt("msg_inicial"), theme_text_color="Secondary", size_hint_y=None)
+        self.lbl_res_reboco.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
+        self._lbl_resultado = self.lbl_res_reboco
+        box_res.add_widget(self.lbl_res_reboco)
+
+        self._montar_botoes_fluxo(box_res)
+
+        box_form.add_widget(box_res)
+        scroll.add_widget(box_form)
+        return scroll
+
+    # ==========================================
     # BOTÕES DO FLUXO: Limpar, Anterior (menos na 1ª aba), Próximo (menos na última) e Finalizar
     # (somem no modo leitura)
     # ==========================================
@@ -1140,6 +1243,10 @@ class CalculatorScreen(MDScreen):
             self.bitola[aba] = BITOLA_PADRAO
         if aba in self.imperm:
             self.imperm[aba] = False
+        if aba in self.dois_lados:
+            self.dois_lados[aba] = False
+        if aba in self.chapisco:
+            self.chapisco[aba] = False
         self._campos = {}
         self.trocar_aba(aba)
         if self.dialog_limpar:
@@ -1192,6 +1299,8 @@ class CalculatorScreen(MDScreen):
         """Concreto (Brocas, Baldrame) ou massa (Paredes): tabela de traços, traço padrão e título do campo."""
         if aba == "paredes":
             return TRACOS_MASSA, TRACO_MASSA_PADRAO, "label_traco_massa"
+        if aba == "reboco":
+            return TRACOS_MASSA, TRACO_MASSA_PADRAO, "label_traco_massa_obrig"
         return TRACOS_CONCRETO, TRACO_CONCRETO_PADRAO, "label_traco"
 
     def _montar_seletor_traco(self, box_form, aba):
@@ -1249,6 +1358,18 @@ class CalculatorScreen(MDScreen):
         if aba in self._botoes_assent:
             self._botoes_assent[aba].text = self._rotulo_assent(chave)
 
+    # --- Sim / Não genérico (Reboco: dois lados e chapisco) ---
+    def _montar_sim_nao(self, box_form, titulo, estado, aba, nome):
+        self._botoes_sn[(nome, aba)] = self._montar_dropdown(
+            box_form, titulo, [False, True], estado[aba],
+            lambda v: self._escolher_sim_nao(estado, aba, nome, v), rotulo=self._rotulo_sim_nao
+        )
+
+    def _escolher_sim_nao(self, estado, aba, nome, valor):
+        estado[aba] = valor
+        if (nome, aba) in self._botoes_sn:
+            self._botoes_sn[(nome, aba)].text = self._rotulo_sim_nao(valor)
+
     # --- Impermeabilização (Sim / Não) ---
     @staticmethod
     def _rotulo_sim_nao(valor):
@@ -1299,6 +1420,8 @@ class CalculatorScreen(MDScreen):
                 return self._calcular_paredes(e)
             if aba == "contrapiso":
                 return self._calcular_contrapiso(e)
+            if aba == "reboco":
+                return self._calcular_reboco(e)
             return self._calcular_brocas(e)
         except ValueError:
             return {"erro": txt("msg_erro_num")}
@@ -1449,6 +1572,62 @@ class CalculatorScreen(MDScreen):
         }
         return {"texto": texto_res, "resultado": resultado}
 
+    def _calcular_reboco(self, e):
+        if not (e.get("area") or "").strip() or not (e.get("esp") or "").strip():
+            return {"erro": txt("msg_erro_num")}
+
+        area = self._numero(e["area"])
+        esp = self._numero(e["esp"])
+        vaos = self._numero(e.get("vaos"), 0.0)
+        perda = self._numero(e.get("perda"), PERDA_PADRAO_REBOCO)
+        dois_lados = self.dois_lados["reboco"]
+        chapisco = self.chapisco["reboco"]
+
+        res = calcular_reboco(
+            area_bruta_m2=area, espessura_cm=esp, desconto_vaos_m2=vaos,
+            dois_lados=dois_lados, chapisco=chapisco, perda_percentual=perda,
+            traco=self.traco["reboco"]
+        )
+        if "erro" in res:
+            return {"erro": f"Erro: {res['erro']}"}
+
+        custo_cimento = res['sacos_cimento'] * TABELA_PRECOS_GLOBAL.cimento_50kg
+        custo_cal = res['sacos_cal'] * TABELA_PRECOS_GLOBAL.cal_20kg
+        custo_areia = res['areia_m3'] * TABELA_PRECOS_GLOBAL.areia_m3
+        custo_mat = custo_cimento + custo_cal + custo_areia
+
+        texto_res = f"{txt('label_area_bruta')}: {fmt_num(res['area_bruta_m2'], 2)} m²\n"
+        if res['desconto_vaos_m2'] > 0:
+            texto_res += f"{txt('label_vaos')}: {fmt_num(res['desconto_vaos_m2'], 2)} m²\n"
+            texto_res += f"{txt('label_area_liquida')}: {fmt_num(res['area_liquida_m2'], 2)} m²\n"
+        if dois_lados:
+            texto_res += f"{txt('label_area_rebocar')} ({txt('txt_dois_lados')}): {fmt_num(res['area_rebocada_m2'], 2)} m²\n"
+        texto_res += (
+            f"{txt('label_traco_curto')}: {res['traco']}\n"
+            f"{txt('label_volume_reboco')} ({fmt_num(perda, 0)}% perda): {fmt_num(res['volume_reboco_m3'], 3)} m³\n"
+        )
+        if chapisco:
+            texto_res += f"{txt('label_chapisco_res')}: {txt('txt_chapisco_incluido')} ({CHAPISCO_TRACO_RODAPE}, {fmt_num(CHAPISCO_ESPESSURA_CM, 1)} cm)\n"
+        texto_res += (
+            f"• {txt('label_cimento')}: {res['sacos_cimento']} {txt('un_sacos')} ({fmt_moeda(custo_cimento)})\n"
+            f"• {txt('label_cal')}: {res['sacos_cal']} {txt('un_sacos_cal')} ({fmt_moeda(custo_cal)})\n"
+            f"• {txt('label_areia')}: {fmt_num(res['areia_m3'], 2)} m³ ({fmt_moeda(custo_areia)})\n"
+            f"\n{txt('label_custo')}: {fmt_moeda(custo_mat)}"
+        )
+
+        resultado = {
+            "etapa": txt("secao_reboco"),
+            "tipo": "reboco",
+            "cimento": res['sacos_cimento'], "cal": res['sacos_cal'], "areia": res['areia_m3'],
+            "custo_mat": custo_mat, "custo_mo": 0.0, "custo_total": custo_mat,
+            "resumo_texto": texto_res,
+            "inputs": {
+                "area": area, "vaos": vaos, "esp": esp, "perda": perda,
+                "traco": res["traco"], "dois_lados": dois_lados, "chapisco": chapisco
+            }
+        }
+        return {"texto": texto_res, "resultado": resultado}
+
     def _calcular_contrapiso(self, e):
         if not (e.get("area") or "").strip() or not (e.get("esp") or "").strip():
             return {"erro": txt("msg_erro_num")}
@@ -1578,6 +1757,10 @@ class CalculatorScreen(MDScreen):
             self.bitola[aba] = bitola if bitola in BITOLAS_LONGITUDINAL else BITOLA_PADRAO
         if aba in self.imperm:
             self.imperm[aba] = bool(inputs_dict.get("imperm"))
+        if aba in self.dois_lados:
+            self.dois_lados[aba] = bool(inputs_dict.get("dois_lados"))
+        if aba in self.chapisco:
+            self.chapisco[aba] = bool(inputs_dict.get("chapisco"))
 
         estado = {}
         for chave in CAMPOS_ABA[aba]:
