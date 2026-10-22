@@ -1,0 +1,10 @@
+# Calculadora de Obras - bibliotecas do app
+# Instalar (dentro do .venv):  pip install -r requirements.txt
+
+kivy==2.3.1
+
+# KivyMD 2.x: ainda nao esta no PyPI, por isso vem direto do GitHub
+kivymd @ https://github.com/kivymd/KivyMD/archive/master.zip
+
+# Quando a geracao de PDF for feita, acrescentar aqui:
+# reportlab

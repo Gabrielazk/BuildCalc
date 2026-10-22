@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 data/historico_obras.json
+.venv/
+venv/
+*.db
