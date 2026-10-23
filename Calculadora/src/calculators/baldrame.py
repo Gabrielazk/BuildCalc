@@ -18,6 +18,9 @@ DEMAOS_IMPERMEABILIZANTE = 2
 LITROS_POR_M2_POR_DEMAO = 0.4     # litros de impermeabilizante por m2 em cada demão
 LITROS_POR_LATA = 18.0            # lata de 18 L
 
+# Preço PROVISÓRIO (R$) até a tabela de preços ser refeita
+PRECO_LATA_IMPERM = 280.00        # lata de 18 L de impermeabilizante
+
 
 def calcular_baldrame(
     comprimento_m: float,

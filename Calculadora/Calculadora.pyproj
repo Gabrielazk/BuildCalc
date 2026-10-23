@@ -27,9 +27,16 @@
     <Compile Include="src\calculators\baldrame.py" />
     <Compile Include="src\calculators\brocas.py" />
     <Compile Include="src\calculators\contrapiso.py" />
+    <Compile Include="src\calculators\eletrica.py" />
+    <Compile Include="src\calculators\esquadrias.py" />
+    <Compile Include="src\calculators\hidraulica.py" />
+    <Compile Include="src\calculators\laje.py" />
     <Compile Include="src\calculators\paredes.py" />
+    <Compile Include="src\calculators\pintura.py" />
     <Compile Include="src\calculators\reboco.py" />
+    <Compile Include="src\calculators\rejunte.py" />
     <Compile Include="src\calculators\revestimento.py" />
+    <Compile Include="src\calculators\telhado.py" />
     <Compile Include="src\calculators\tracos.py" />
     <Compile Include="src\calculators\__init__.py" />
     <Compile Include="src\models\database.py" />
@@ -37,7 +44,14 @@
     <Compile Include="src\models\__init__.py" />
     <Compile Include="src\services\pdf_generator.py" />
     <Compile Include="src\services\__init__.py" />
+    <Compile Include="src\views\calculator_screen.py" />
+    <Compile Include="src\views\comum.py" />
+    <Compile Include="src\views\history_screen.py" />
+    <Compile Include="src\views\home_screen.py" />
+    <Compile Include="src\views\login_screen.py" />
     <Compile Include="src\views\main_screen.py" />
+    <Compile Include="src\views\settings_screen.py" />
+    <Compile Include="src\views\summary_screen.py" />
     <Compile Include="src\views\__init__.py" />
   </ItemGroup>
   <ItemGroup>
